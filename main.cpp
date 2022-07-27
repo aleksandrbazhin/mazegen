@@ -3,8 +3,8 @@
 #include "map_gen_lib.hpp"
 
 const int TILE_SIZE = 16;
-const int ROWS = 71;
-const int COLS = 121;
+const int ROWS = 63;
+const int COLS = 115;
 
 sf::Texture floor_texture;
 

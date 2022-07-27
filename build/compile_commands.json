@@ -1,7 +1,0 @@
-[
-{
-  "directory": "/home/alexander/Documents/sfml map gen/build",
-  "command": "/usr/bin/g++   -g -o CMakeFiles/map_gen.dir/main.cpp.o -c \"/home/alexander/Documents/sfml map gen/main.cpp\"",
-  "file": "/home/alexander/Documents/sfml map gen/main.cpp"
-}
-]

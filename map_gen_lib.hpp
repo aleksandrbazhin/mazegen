@@ -10,7 +10,7 @@ namespace mapgen {
 const int NOTHING = 0;
 const int FLOOR = 1;
 const int ROOM_FLOOR = 2;
-const int ROOM_NUMBER = 20;
+const int ROOM_NUMBER = 40;
 const int ROOM_SIZE_MIN = 7;
 const int ROOM_SIZE_MAX = 11;
 const int MAX_PLACE_ATTEMPTS = 5;
@@ -142,17 +142,19 @@ void build_maze(Grid &grid, const Points &constraints = {}) {
         Point p = unmet_constraints.back();
         auto [x, y] = p;
         unmet_constraints.pop_back();
-
         if (x % 2 != 1 || y % 2 != 1) {
             std::cout << "Error: unreachable constraint" << std::endl;
             continue;
         }
-
         if (grid[y][x] != NOTHING) {
             continue;
         }
-        // grid[y][x]= ROOM_FLOOR;
-        grow_maze(p, grid, unmet_constraints);
+        grow_maze(p, grid);
+    }
+    for (int x = 0; x < grid_cols / 2; x++) {
+        for (int y = 0; y < grid_rows / 2; y++) {
+            if (grid[y * 2 + 1][x * 2 + 1] != NOTHING) grow_maze(Point{x * 2 + 1, y * 2 + 1}, grid);
+        }
     }
 }
 
@@ -163,8 +165,8 @@ bool can_be_carved(const Grid& grid, const Point& p) {
 }
 
 
-void grow_maze(Point constraint_p, Grid& grid, Points& unmet_constraints) {
-    Point p {constraint_p};
+void grow_maze(Point start_p, Grid& grid) {
+    Point p {start_p};
     Direction dir;
     if (can_be_carved(grid, p)) {
         grid[p.second][p.first] = FLOOR;
