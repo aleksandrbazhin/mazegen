@@ -20,12 +20,20 @@ const int MAX_PLACE_ATTEMPTS = 5;
 
 
 typedef std::vector<std::vector<int>> Grid;
-typedef std::pair<int, int> Point;
+
+struct Point {
+    int x, y;
+    bool operator<(const Point& another) const {
+        return x < another.x || y < another.y;
+    }
+    bool operator==(const Point& another) const {
+        return x == another.x && y == another.y;
+    }
+};
+
 typedef std::vector<Point> Points;
 
-
-struct Room
-{
+struct Room {
     int x1;
     int y1;
     int x2;
@@ -45,8 +53,8 @@ struct Room
 struct Direction {
     int dx = 0, dy = 0;
     Point step(const Point& p) const {
-        // Point& return_point{p.first, p.second};
-        return Point(p.first + dx, p.second + dy);
+        // Point& return_point{p.x, p.y};
+        return Point{p.x + dx, p.y + dy};
     }
     bool operator==(const Direction& rhs) const {
         return dx == rhs.dx && dy == rhs.dy;
@@ -76,7 +84,7 @@ class Generator {
 
 public:
 
-Grid generate(int rows, int cols, const Points &constraints = {}) {
+Grid generate(int rows, int cols, const std::set<Point> &constraints = {}) {
     if (rows % 2 != 1 || cols % 2 != 1) {
         std::cout << "Warning: map size should be odd" << std::endl;
     }
@@ -90,6 +98,7 @@ Grid generate(int rows, int cols, const Points &constraints = {}) {
     place_rooms();
     build_maze(constraints);
     connect_regions();
+    reduce_maze(constraints);
     return grid;
 }
 
@@ -99,9 +108,9 @@ std::mt19937 rng;
 int grid_rows;
 int grid_cols;
 std::vector<Room> rooms;
-// Points region_points;
 Grid grid;
-
+int _maze_region_id = 10000;
+Points dead_ends;
 
 
 void place_rooms() {
@@ -148,10 +157,9 @@ void place_rooms() {
     }
 }
 
-// constraints are the points which are always in the maze, never discarded
-void build_maze(const Points& constraints) {
-    
-    Points unmet_constraints {constraints};
+// constraints are the points which are always in the maze, never empty
+void build_maze(const std::set<Point>& constraints) {
+    Points unmet_constraints(constraints.begin(), constraints.end());
     while (!unmet_constraints.empty()) {
         Point p = unmet_constraints.back();
         auto [x, y] = p;
@@ -174,31 +182,28 @@ void build_maze(const Points& constraints) {
 
 
 bool is_in_bounds(const Point& p) {
-    return p.first > 0 && p.second > 0 && p.first < grid_cols && p.second < grid_rows;
+    return p.x > 0 && p.y > 0 && p.x < grid_cols && p.y < grid_rows;
 }
 
 
-bool can_be_carved(const Point& p) {
-    return is_in_bounds(p) && grid[p.second][p.first] == NOTHING;
+bool is_cell_empty(const Point& p) {
+    return is_in_bounds(p) && grid[p.y][p.x] == NOTHING;
 }
 
 
 int get_region_id(const Point& p) {
     if (!is_in_bounds(p)) return NOTHING;
-    return grid[p.second][p.first];
+    return grid[p.y][p.x];
 }
 
 
-int maze_region_index = 9999;
 void grow_maze(Point start_p) {
-    maze_region_index++;
-    // region_points.push_back(start_p);
+    _maze_region_id++;
     Point p {start_p};
     Direction dir;
-    if (can_be_carved(p)) {
-        grid[p.second][p.first] = maze_region_index;
+    if (is_cell_empty(p)) {
+        grid[p.y][p.x] = _maze_region_id;
     }
-
     std::stack<Point> test_points;
     test_points.push(Point(p));
     std::vector<Direction> random_dirs {c_dirs.dirs};
@@ -206,28 +211,27 @@ void grow_maze(Point start_p) {
 
     while (!test_points.empty()) {
         std::shuffle(random_dirs.begin(), random_dirs.end(), rng);
-
         dead_end = true;
         for (Direction& d : random_dirs) {
             Point test = (d * 2).step(p);
-            if (can_be_carved(test)) {
+            if (is_cell_empty(test)) {
                 dir = d;
                 dead_end = false;
                 break;
             }
         }
         if (dead_end) {
+            if (is_dead_end(p)) dead_ends.push_back(p);
             p = test_points.top();
             test_points.pop();
         } else {
             p = dir.step(p);
-            grid[p.second][p.first] = maze_region_index;
+            grid[p.y][p.x] = _maze_region_id;
             p = dir.step(p);
-            grid[p.second][p.first] = maze_region_index;
+            grid[p.y][p.x] = _maze_region_id;
             test_points.push(Point(p));
         }
     }
-    
 }
 
 void add_connector(const Point& test_point, const Point& connect_point, std::map<int, Points>& connections) {
@@ -260,10 +264,40 @@ void connect_regions() {
             if (connected_rooms.find(region_id) != connected_rooms.end()) continue;
             std::uniform_int_distribution<> connector_distribution(0, region_connectors.second.size() - 1);
             Point p = region_connectors.second[connector_distribution(rng)];
-            // std::cout << "(" << p.first << ", " << p.second << ") to " << region_id << std::endl;
-            grid[p.second][p.first] = FLOOR;
+            // std::cout << "(" << p.x << ", " << p.y << ") to " << region_id << std::endl;
+            grid[p.y][p.x] = FLOOR;
         }
         connected_rooms.insert(r.id);
+    }
+}
+
+
+bool is_dead_end(const Point& p) {
+    int passways = 0;
+    for (const auto& d : c_dirs.dirs) {
+        Point test_p = d.step(p);
+        if (get_region_id(test_p) != NOTHING) passways += 1;
+    }
+    return passways == 1;
+}
+
+
+void reduce_maze(const std::set<Point>& constraints) {
+    bool done = false;
+    // std::cout << dead_ends.size() << std::endl;
+    for (const auto& end_p : dead_ends) {
+        Point p{end_p};
+        while (is_dead_end(p)) {
+            if (constraints.find(p) != constraints.end()) break; // do not remove constrained points
+            for (const auto& d : c_dirs.dirs) {
+                Point test_point = d.step(p);
+                if (get_region_id(test_point) != NOTHING) {
+                    grid[p.y][p.x] = NOTHING;
+                    p = test_point;
+                    break;
+                }
+            }
+        }
     }
 }
 };

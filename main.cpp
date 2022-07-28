@@ -3,8 +3,8 @@
 #include "map_gen_lib.hpp"
 
 const int TILE_SIZE = 16;
-const int ROWS = 51;
-const int COLS = 71;
+const int ROWS = 63;
+const int COLS = 115;
 
 sf::Texture floor_texture;
 
@@ -17,8 +17,8 @@ void prepare() {
 
 mapgen::Grid generate_dungeon() {
     auto gen = mapgen::Generator();
-    mapgen::Points constraints{{1, 1}, {11, 11}};
-    return gen.generate(ROWS, COLS, constraints);
+    // mapgen::PointSet constraints ;
+    return gen.generate(ROWS, COLS, {{1, 1}, {11, 11}});
 }
 
 
