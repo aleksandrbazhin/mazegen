@@ -14,6 +14,7 @@ add_executable(map_gen main.cpp)
 find_package(SFML REQUIRED graphics window system)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE sfml-graphics sfml-window sfml-system)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 
 # copy contetnts of assets
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
