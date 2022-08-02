@@ -18,6 +18,7 @@ const int MAZE_ID_START = 10000;
 // const int MAZE_FLOOR = 3;
 
 const float DEADEND_CHANCE = 0.3;
+const float WIGGLE_CHANCE = 0.5;
 const int ROOM_NUMBER = 40;
 const int ROOM_SIZE_MIN = 7;
 const int ROOM_SIZE_MAX = 11;
@@ -197,11 +198,13 @@ void grow_maze(Point start_p) {
     }
     std::stack<Point> test_points;
     test_points.push(Point(p));
+    std::uniform_real_distribution<double> dir_chance_distribution(0, 1);
     Directions random_dirs {CARDINALS};
     bool dead_end = false;
 
     while (!test_points.empty()) {
-        std::shuffle(random_dirs.begin(), random_dirs.end(), rng);
+        if (dir_chance_distribution(rng) < WIGGLE_CHANCE)
+            std::shuffle(random_dirs.begin(), random_dirs.end(), rng);
         dead_end = true;
         for (Direction& d : random_dirs) {
             Point test = p.neighbour_to(d * 2);
