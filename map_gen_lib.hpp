@@ -9,18 +9,14 @@
 namespace mapgen {
 
 const int NOTHING_ID = 0;
-const int DOOR_ID = 200;
+const int DOOR_ID_START = 200;
 const int ROOM_ID_START = 100;
 const int MAZE_ID_START = 1000;
 
-// const int FLOOR = 1;
-// const int ROOM_FLOOR = 2;
-// const int MAZE_FLOOR = 3;
-
 const float DEADEND_CHANCE = 0.3;
 const float WIGGLE_CHANCE = 0.5;
-const float EXTRA_CONNECTION_CHANCE = 0.2;
-const int ROOM_NUMBER = 40;
+const float EXTRA_CONNECTION_CHANCE = 0.0;
+const int ROOM_NUMBER = 20;
 const int ROOM_SIZE_MIN = 7;
 const int ROOM_SIZE_MAX = 11;
 const int MAX_PLACE_ATTEMPTS = 5;
@@ -33,10 +29,10 @@ struct Direction {
     bool operator==(const Direction& rhs) const {
         return dx == rhs.dx && dy == rhs.dy;
     }
-    Direction operator-() {
+    Direction operator-() const {
         return Direction{-1 * dx, -1 * dy};
     }
-    Direction operator*(int a) {
+    Direction operator*(const int a) const {
         return Direction{a * dx, a * dy};
     }
 };
@@ -67,9 +63,13 @@ struct Room {
     int y2;
     int id;    
 
-    bool too_close(const Room &another, int distance) {
+    bool too_close(const Room& another, int distance) {
         return x1 - distance < another.x2 && x2 + distance > another.x1 && 
             y1 - distance < another.y2 && y2 + distance > another.y1;
+    }
+
+    bool has_point(const Point& point) {
+        return point.x >= x1 && point.x <= x2 && point.y >= y1 && point.y <= y2;
     }
 };
 
@@ -93,8 +93,7 @@ public:
 
 // constraints are between (1, 1) and (rows - 2, cols - 2)
 // those points are fixed on the generation
-
-Grid generate(int rows, int cols, const std::set<Point> &constraints = {}) {
+Grid generate(int rows, int cols, const std::set<Point> &hall_constraints = {}) {
     if (rows % 2 != 1 || cols % 2 != 1) {
         std::cout << "Warning: map size should be odd" << std::endl;
     }
@@ -105,11 +104,12 @@ Grid generate(int rows, int cols, const std::set<Point> &constraints = {}) {
     std::random_device seed_gen;
     rng.seed(seed_gen());
 
-    place_rooms();
-    build_maze(constraints);
+    place_rooms(hall_constraints);
+    build_maze(hall_constraints);
     connect_regions();
-    reduce_maze(constraints);
-    reduce_connectivity(constraints);
+    reduce_maze(hall_constraints);
+    reduce_connectivity();
+    reconnect_dead_ends();
     return grid;
 }
 
@@ -124,11 +124,12 @@ std::mt19937 rng;
 int grid_rows;
 int grid_cols;
 Grid grid;
-int _maze_region_id = MAZE_ID_START;
+int maze_region_id = MAZE_ID_START;
+int door_id = DOOR_ID_START;
 Points dead_ends;
 
 
-void place_rooms() {
+void place_rooms(const std::set<Point> &hall_constraints = {}) {
     std::uniform_int_distribution<> room_size_distribution(ROOM_SIZE_MIN, ROOM_SIZE_MAX);
     std::uniform_int_distribution<> room_position_x_distribution(0, grid_cols - ROOM_SIZE_MIN - (ROOM_SIZE_MAX - ROOM_SIZE_MIN) / 2);
     std::uniform_int_distribution<> room_position_y_distribution(0, grid_rows - ROOM_SIZE_MIN - (ROOM_SIZE_MAX - ROOM_SIZE_MIN) / 2);
@@ -158,7 +159,15 @@ void place_rooms() {
                 }
             }
             if (too_close) continue;
-            
+            bool breaks_hall_constraint = false;
+            for (const Point& point: hall_constraints) {
+                if (room.has_point(point)) {
+                    breaks_hall_constraint = true;
+                    break;
+                }  
+            }
+            if (breaks_hall_constraint) continue;
+
             rooms.push_back(room);
             room_is_placed = true;
             for (int x = room.x1; x <= room.x2; x++) {
@@ -219,10 +228,10 @@ void grow_maze(Point start_p) {
     if (!is_cell_empty(p)) {
         return;
     }
-    ++_maze_region_id;
-    halls.push_back({p, _maze_region_id});
+    ++maze_region_id;
+    halls.push_back({p, maze_region_id});
 
-    grid[p.y][p.x] = _maze_region_id;
+    grid[p.y][p.x] = maze_region_id;
     std::stack<Point> test_points;
     test_points.push(Point(p));
     std::uniform_real_distribution<double> dir_chance_distribution(0, 1);
@@ -247,9 +256,9 @@ void grow_maze(Point start_p) {
             test_points.pop();
         } else {
             p = p.neighbour_to(dir);
-            grid[p.y][p.x] = _maze_region_id;
+            grid[p.y][p.x] = maze_region_id;
             p = p.neighbour_to(dir);
-            grid[p.y][p.x] = _maze_region_id;
+            grid[p.y][p.x] = maze_region_id;
             test_points.push(Point(p));
         }
     }
@@ -270,7 +279,7 @@ void add_connector(const Point& test_point, const Point& connect_point, std::map
 void connect_regions() {
     if (rooms.empty()) return;
     std::set<int> connected_rooms; // prevent room double connections to the same region
-    int door_id = DOOR_ID;
+    // int door_id = DOOR_ID;
     for (auto& room: rooms) {
         std::map<int, Points> connections;
         for (int x = room.x1; x <= room.x2; x += 2) {
@@ -288,7 +297,6 @@ void connect_regions() {
             Point p = region_connectors.second[connector_distribution(rng)];
             grid[p.y][p.x] = ++door_id;
             doors.push_back({p, door_id, room.id, region_id});
-            
         }
         connected_rooms.insert(room.id);
     }
@@ -307,9 +315,8 @@ bool is_dead_end(const Point& p) {
 
 void reduce_maze(const std::set<Point>& constraints) {
     bool done = false;
-    // std::cout << dead_ends.size() << std::endl;
     std::uniform_real_distribution<double> reduce_distribution(0, 1);
-    for (const auto& end_p : dead_ends) {
+    for (auto& end_p : dead_ends) {
         if (reduce_distribution(rng) < DEADEND_CHANCE) continue;
         Point p{end_p};
         while (is_dead_end(p)) {
@@ -323,15 +330,14 @@ void reduce_maze(const std::set<Point>& constraints) {
                 }
             }
         }
+        end_p.x = p.x;
+        end_p.y = p.y;
     }
 }
 
 
+// disjoint sets (union-find)
 int find(const std::unordered_map<int, int>& regions, int region_id) {
-    // if(regions.find(region_id) == regions.end()) {
-    //     std::cout << ("ERROR!") << std::endl;
-    //     return NOTHING_ID;
-    // }
     if (regions.at(region_id) == region_id) {
         return region_id;
     } 
@@ -339,8 +345,7 @@ int find(const std::unordered_map<int, int>& regions, int region_id) {
 }
 
 
-// TODO: implement disjoint sets (union-find)
-void reduce_connectivity(const std::set<Point>& constraints) {
+void reduce_connectivity() {
     std::unordered_map<int, int> region_sets;
     for (const auto& room: rooms) {
         region_sets[room.id] = room.id;
@@ -361,14 +366,42 @@ void reduce_connectivity(const std::set<Point>& constraints) {
             }
             continue;
         }
-
-        // std::cout << "door from " << door.id_from << " to " << door.id_to << std::endl;
-        // std::cout  << parent_from << " " << parent_to << std::endl;
         int min_parent = std::min(parent_from, parent_to);
         int max_parent = std::max(parent_from, parent_to);
         region_sets[max_parent] = min_parent;
     }
-
 }
+
+void reconnect_dead_ends() {
+    for (const Point& dead_end: dead_ends) {
+        int hall_id = get_region_id(dead_end);
+        if (hall_id == NOTHING_ID) continue;
+        std::map<Point, int> candidates;
+        int connection_number = 0;
+        for (const Direction& dir : CARDINALS) {
+            Point test_p = dead_end.neighbour_to(dir * 2);
+            int neighbor_id = get_region_id(test_p);
+            if (neighbor_id != NOTHING_ID) {
+                Point door_p {dead_end.x + dir.dx, dead_end.y + dir.dy};
+                if (get_region_id(door_p) != NOTHING_ID) {
+                    ++connection_number;
+                    continue;
+                }
+                if (hall_id == neighbor_id) continue;
+                candidates[door_p] = neighbor_id;
+            }
+        }
+        if (connection_number > 1) continue; // not a true dead end
+        if (candidates.size() == 0) continue;
+
+        auto& [door_p, neighbor_id] = *candidates.begin();
+
+        grid[door_p.y][door_p.x] = ++door_id;
+        // std::cout << "adding door # " << door_id << std::endl;
+        doors.push_back({door_p, door_id, hall_id, neighbor_id});
+
+    }
+}
+
 };
 }

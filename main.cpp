@@ -1,18 +1,18 @@
 #include <SFML/Graphics.hpp>
 #include "map_gen_lib.hpp"
 
-// const int TILE_SIZE = 16;
-// const int ROWS = 63;
-// const int COLS = 115;
+const int TILE_SIZE = 16;
+const int ROWS = 61;
+const int COLS = 115;
 
 // const int TILE_SIZE = 8;
-// const int ROWS = 120;
-// const int COLS = 230;
+// const int ROWS = 121;
+// const int COLS = 231;
 
 
-const int TILE_SIZE = 32;
-const int ROWS = 25;
-const int COLS = 25;
+// const int TILE_SIZE = 32;
+// const int ROWS = 25;
+// const int COLS = 25;
 
 
 sf::Texture floor_texture;
@@ -27,7 +27,7 @@ void prepare() {
 mapgen::Grid generate_dungeon() {
     auto gen = mapgen::Generator();
     // mapgen::PointSet constraints ;
-    return gen.generate(ROWS, COLS, {{1, 1}, {ROWS - 2, COLS - 2}});
+    return gen.generate(ROWS, COLS, {{1, 1}, {COLS - 2, ROWS - 2}});
 }
 
 
@@ -89,24 +89,24 @@ void render_game(sf::RenderWindow &window) {
     window.clear();
     window.draw(map_vertices, &floor_texture);
     
-    sf::Font font;
-    if (font.loadFromFile("assets/RobotoMono-Bold.ttf")) {
-        for (int y = 0; y < grid.size(); y++) {
-            for (int x = 0; x < grid[0].size(); x++) {
-                if (grid[y][x] != mapgen::NOTHING_ID) {
-                    sf::Text text;
-                    text.setPosition(x * TILE_SIZE + 2, y * TILE_SIZE + 2);
-                    text.setFont(font); // font is a sf::Font
-                    text.setString(std::to_string(grid[y][x]));
-                    text.setCharacterSize(11); // in pixels, not points!
-                    // text.setFillColor(sf::Color::Red);
-                    // text.setStyle(sf::Text::Bold | sf::Text::Underlined);
-                    window.draw(text);
-                }
-            }
-        }
+    // sf::Font font;
+    // if (font.loadFromFile("assets/RobotoMono-Bold.ttf")) {
+    //     for (int y = 0; y < grid.size(); y++) {
+    //         for (int x = 0; x < grid[0].size(); x++) {
+    //             if (grid[y][x] != mapgen::NOTHING_ID) {
+    //                 sf::Text text;
+    //                 text.setPosition(x * TILE_SIZE + 2, y * TILE_SIZE + 2);
+    //                 text.setFont(font); // font is a sf::Font
+    //                 text.setString(std::to_string(grid[y][x]));
+    //                 text.setCharacterSize(11); // in pixels, not points!
+    //                 // text.setFillColor(sf::Color::Red);
+    //                 // text.setStyle(sf::Text::Bold | sf::Text::Underlined);
+    //                 window.draw(text);
+    //             }
+    //         }
+    //     }
     
-    }
+    // }
 
     window.display();
 }
