@@ -3,8 +3,13 @@
 #include <vector>
 #include <stack>
 #include <set>
+#include <map>
+#include <unordered_map>
+#include <array>
 #include <random>
 #include <iostream>
+#include <algorithm>
+
 
 namespace mapgen {
 
@@ -93,7 +98,7 @@ public:
 
 // constraints are between (1, 1) and (rows - 2, cols - 2)
 // those points are fixed on the generation
-Grid generate(int rows, int cols, const std::set<Point> &hall_constraints = {}) {
+Grid generate( int cols, int rows, const std::set<Point> &hall_constraints = {}) {
     if (rows % 2 != 1 || cols % 2 != 1) {
         std::cout << "Warning: map size should be odd" << std::endl;
     }
@@ -399,7 +404,6 @@ void reconnect_dead_ends() {
         grid[door_p.y][door_p.x] = ++door_id;
         // std::cout << "adding door # " << door_id << std::endl;
         doors.push_back({door_p, door_id, hall_id, neighbor_id});
-
     }
 }
 

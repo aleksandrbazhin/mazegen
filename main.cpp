@@ -1,5 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include "map_gen_lib.hpp"
+#include <chrono>
 
 const int TILE_SIZE = 16;
 const int ROWS = 61;
@@ -9,6 +10,10 @@ const int COLS = 115;
 // const int ROWS = 121;
 // const int COLS = 231;
 
+
+// const int TILE_SIZE = 1;
+// const int ROWS = 961;
+// const int COLS = 1841;
 
 // const int TILE_SIZE = 32;
 // const int ROWS = 25;
@@ -27,7 +32,7 @@ void prepare() {
 mapgen::Grid generate_dungeon() {
     auto gen = mapgen::Generator();
     // mapgen::PointSet constraints ;
-    return gen.generate(ROWS, COLS, {{1, 1}, {COLS - 2, ROWS - 2}});
+    return gen.generate(COLS, ROWS, {{1, 1}, {COLS - 2, ROWS - 2}});
 }
 
 
@@ -138,7 +143,10 @@ int main()
             }
         }
         if (is_render_needed) {
+            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
             render_game(window);
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
         }
     }
 
