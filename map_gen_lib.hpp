@@ -60,6 +60,7 @@ struct Point {
 };
 
 typedef std::vector<Point> Points;
+typedef std::set<Point> ConstraintSet;
 
 struct Room {
     int x1;
@@ -98,17 +99,19 @@ public:
 
 // constraints are between (1, 1) and (rows - 2, cols - 2)
 // those points are fixed on the generation
-Grid generate( int cols, int rows, const std::set<Point> &hall_constraints = {}) {
-    if (rows % 2 != 1 || cols % 2 != 1) {
-        std::cout << "Warning: map size should be odd" << std::endl;
-    }
+Grid generate(int cols, int rows, const ConstraintSet &hall_constraints = {}) {
+    if (rows % 2 == 0) rows -= 1;
+    if (cols % 2 == 0) cols -= 1;
     
     grid_rows = rows;
     grid_cols = cols;
     grid = Grid(grid_rows, std::vector<int>(grid_cols, NOTHING_ID));
-    std::random_device seed_gen;
-    rng.seed(seed_gen());
-
+    if (is_seed_set) {
+        rng.seed(predefined_seed);
+    } else {
+        std::random_device rd;
+        rng.seed(rd());
+    }
     place_rooms(hall_constraints);
     build_maze(hall_constraints);
     connect_regions();
@@ -116,6 +119,11 @@ Grid generate( int cols, int rows, const std::set<Point> &hall_constraints = {})
     reduce_connectivity();
     reconnect_dead_ends();
     return grid;
+}
+
+void set_seed(unsigned int seed) {
+    is_seed_set = true;
+    predefined_seed = seed;
 }
 
 private:
@@ -133,8 +141,11 @@ int maze_region_id = MAZE_ID_START;
 int door_id = DOOR_ID_START;
 Points dead_ends;
 
+bool is_seed_set = false;
+unsigned int predefined_seed;
 
-void place_rooms(const std::set<Point> &hall_constraints = {}) {
+
+void place_rooms(const ConstraintSet &hall_constraints = {}) {
     std::uniform_int_distribution<> room_size_distribution(ROOM_SIZE_MIN, ROOM_SIZE_MAX);
     std::uniform_int_distribution<> room_position_x_distribution(0, grid_cols - ROOM_SIZE_MIN - (ROOM_SIZE_MAX - ROOM_SIZE_MIN) / 2);
     std::uniform_int_distribution<> room_position_y_distribution(0, grid_rows - ROOM_SIZE_MIN - (ROOM_SIZE_MAX - ROOM_SIZE_MIN) / 2);
@@ -186,7 +197,7 @@ void place_rooms(const std::set<Point> &hall_constraints = {}) {
 }
 
 // constraints are the points which are always in the maze, never empty
-void build_maze(const std::set<Point>& constraints) {
+void build_maze(const ConstraintSet& constraints) {
     Points unmet_constraints(constraints.begin(), constraints.end());
     // first grow from the constraints
     while (!unmet_constraints.empty()) {
@@ -318,7 +329,7 @@ bool is_dead_end(const Point& p) {
 }
 
 
-void reduce_maze(const std::set<Point>& constraints) {
+void reduce_maze(const ConstraintSet& constraints) {
     bool done = false;
     std::uniform_real_distribution<double> reduce_distribution(0, 1);
     for (auto& end_p : dead_ends) {

@@ -3,21 +3,21 @@
 #include <chrono>
 
 const int TILE_SIZE = 16;
-const int ROWS = 61;
-const int COLS = 115;
+const int HEIGHT = 61;
+const int WIDTH = 115;
 
 // const int TILE_SIZE = 8;
-// const int ROWS = 121;
-// const int COLS = 231;
+// const int HEIGHT = 121;
+// const int WIDTH = 231;
 
 
 // const int TILE_SIZE = 1;
-// const int ROWS = 961;
-// const int COLS = 1841;
+// const int HEIGHT = 961;
+// const int WIDTH = 1841;
 
 // const int TILE_SIZE = 32;
-// const int ROWS = 25;
-// const int COLS = 25;
+// const int HEIGHT = 25;
+// const int WIDTH = 25;
 
 
 sf::Texture floor_texture;
@@ -31,8 +31,9 @@ void prepare() {
 
 mapgen::Grid generate_dungeon() {
     auto gen = mapgen::Generator();
-    // mapgen::PointSet constraints ;
-    return gen.generate(COLS, ROWS, {{1, 1}, {COLS - 2, ROWS - 2}});
+    // gen.set_seed(101);
+    mapgen::ConstraintSet constraints {{1, 1}, {WIDTH - 2, HEIGHT - 2}};
+    return gen.generate(WIDTH, HEIGHT, constraints);
 }
 
 
@@ -41,12 +42,12 @@ mapgen::Grid generate_dungeon() {
     
     // sf::VertexArray map_vertices;
     // map_vertices.setPrimitiveType(sf::Quads);
-    // map_vertices.resize(ROWS * COLS * 4);
+    // map_vertices.resize(HEIGHT * WIDTH * 4);
 
     // for (int y = 0; y < grid.size(); y++) {
     //      for (int x = 0; x < grid[0].size(); x++) {
     //         if (grid[y][x] != mapgen::NOTHING_ID) {
-    //             sf::Vertex* quad = &map_vertices[(x + y * COLS) * 4];
+    //             sf::Vertex* quad = &map_vertices[(x + y * WIDTH) * 4];
 
     //             quad[0].position = sf::Vector2f(x * TILE_SIZE, y * TILE_SIZE);
     //             quad[1].position = sf::Vector2f((x + 1) * TILE_SIZE, y * TILE_SIZE);
@@ -73,11 +74,11 @@ void render_game(sf::RenderWindow &window) {
     auto grid = generate_dungeon();
     sf::VertexArray map_vertices;
     map_vertices.setPrimitiveType(sf::Quads);
-    map_vertices.resize(ROWS * COLS * 4);
+    map_vertices.resize(HEIGHT * WIDTH * 4);
     for (int y = 0; y < grid.size(); y++) {
          for (int x = 0; x < grid[0].size(); x++) {
             if (grid[y][x] != mapgen::NOTHING_ID) {
-                sf::Vertex* quad = &map_vertices[(x + y * COLS) * 4];
+                sf::Vertex* quad = &map_vertices[(x + y * WIDTH) * 4];
 
                 quad[0].position = sf::Vector2f(x * TILE_SIZE, y * TILE_SIZE);
                 quad[1].position = sf::Vector2f((x + 1) * TILE_SIZE, y * TILE_SIZE);
@@ -110,7 +111,6 @@ void render_game(sf::RenderWindow &window) {
     //             }
     //         }
     //     }
-    
     // }
 
     window.display();
@@ -120,7 +120,7 @@ void render_game(sf::RenderWindow &window) {
 int main()
 {
     prepare();
-    sf::RenderWindow window(sf::VideoMode(COLS * TILE_SIZE, ROWS * TILE_SIZE), "Map");
+    sf::RenderWindow window(sf::VideoMode(WIDTH * TILE_SIZE, HEIGHT * TILE_SIZE), "Map");
     render_game(window);
     while (window.isOpen())
     {
