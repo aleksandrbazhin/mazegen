@@ -1,5 +1,5 @@
 #include <SFML/Graphics.hpp>
-#include "map_gen_lib.hpp"
+#include "mazegen.hpp"
 #include <chrono>
 
 const int TILE_SIZE = 16;
@@ -29,10 +29,10 @@ void prepare() {
 }
 
 
-mapgen::Grid generate_dungeon() {
-    auto gen = mapgen::Generator();
+mazegen::Grid generate_dungeon() {
+    auto gen = mazegen::Generator();
     // gen.set_seed(101);
-    mapgen::ConstraintSet constraints {{1, 1}, {WIDTH - 2, HEIGHT - 2}};
+    mazegen::ConstraintSet constraints {{1, 1}, {WIDTH - 2, HEIGHT - 2}};
     return gen.generate(WIDTH, HEIGHT, constraints);
 }
 
@@ -64,6 +64,7 @@ mapgen::Grid generate_dungeon() {
 //     return map_vertices;
 // }
 
+float ch = 0.0;
 
 void render_game(sf::RenderWindow &window) {
     // auto map = make_dungeon_map();
@@ -71,13 +72,23 @@ void render_game(sf::RenderWindow &window) {
     // window.draw(map, &floor_texture);
     // auto grid = generate_dungeon();
 
+    mazegen::EXTRA_CONNECTION_CHANCE = 0.25;
+    mazegen::WIGGLE_CHANCE = 0.5;
+    mazegen::DEADEND_CHANCE = 0.3;
+
+    mazegen::ROOM_NUMBER = 50;
+    mazegen::ROOM_SIZE_MIN = 3;
+    mazegen::ROOM_SIZE_MAX = 10;
+    // mazegen::DEADEND_CHANCE = 1.0 - ch;
+    ch += 0.05;
+
     auto grid = generate_dungeon();
     sf::VertexArray map_vertices;
     map_vertices.setPrimitiveType(sf::Quads);
     map_vertices.resize(HEIGHT * WIDTH * 4);
     for (int y = 0; y < grid.size(); y++) {
          for (int x = 0; x < grid[0].size(); x++) {
-            if (grid[y][x] != mapgen::NOTHING_ID) {
+            if (grid[y][x] != mazegen::NOTHING_ID) {
                 sf::Vertex* quad = &map_vertices[(x + y * WIDTH) * 4];
 
                 quad[0].position = sf::Vector2f(x * TILE_SIZE, y * TILE_SIZE);

@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 # include(CTest)
 # enable_testing()
 
-add_library(map_gen_lib INTERFACE map_gen_lib.hpp)
+add_library(mazegen INTERFACE mazegen.hpp)
 
 add_executable(map_gen main.cpp)
 

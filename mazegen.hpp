@@ -11,20 +11,20 @@
 #include <algorithm>
 
 
-namespace mapgen {
+namespace mazegen {
 
-const int NOTHING_ID = 0;
-const int DOOR_ID_START = 200;
-const int ROOM_ID_START = 100;
-const int MAZE_ID_START = 1000;
+const int NOTHING_ID = -1;
+const int DOOR_ID_START = 20000;
+const int ROOM_ID_START = 10000;
+const int MAZE_ID_START = 0;
 
-const float DEADEND_CHANCE = 0.3;
-const float WIGGLE_CHANCE = 0.5;
-const float EXTRA_CONNECTION_CHANCE = 0.0;
-const int ROOM_NUMBER = 20;
-const int ROOM_SIZE_MIN = 7;
-const int ROOM_SIZE_MAX = 11;
-const int MAX_PLACE_ATTEMPTS = 5;
+float DEADEND_CHANCE = 0.3;
+float WIGGLE_CHANCE = 0.5;
+float EXTRA_CONNECTION_CHANCE = 0.2;
+int ROOM_NUMBER = 20;
+int ROOM_SIZE_MIN = 7;
+int ROOM_SIZE_MAX = 11;
+int MAX_PLACE_ATTEMPTS = 5;
 
 
 typedef std::vector<std::vector<int>> Grid;
@@ -91,6 +91,18 @@ struct Door {
     int id_to;
     bool is_hidden = false;
 };
+
+bool is_hall(int id) {
+    return id >= MAZE_ID_START && id < ROOM_ID_START;
+}
+
+bool is_room(int id) {
+    return id >= ROOM_ID_START && id < DOOR_ID_START;
+}
+
+bool is_door(int id) {
+    return id >= DOOR_ID_START;
+}
 
 
 class Generator {
@@ -216,7 +228,7 @@ void build_maze(const ConstraintSet& constraints) {
     // then from all the empty points 
     for (int x = 0; x < grid_cols / 2; x++) {
         for (int y = 0; y < grid_rows / 2; y++) {
-            if (grid[y * 2 + 1][x * 2 + 1] == NOTHING_ID) grow_maze(Point{x * 2 + 1, y * 2 + 1});
+            if (grid[y * 2 + 1][x * 2 + 1] == NOTHING_ID) grow_maze({x * 2 + 1, y * 2 + 1});
         }
     }
 }
