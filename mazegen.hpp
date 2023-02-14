@@ -25,6 +25,7 @@ int ROOM_NUMBER = 20;
 int ROOM_SIZE_MIN = 7;
 int ROOM_SIZE_MAX = 11;
 int MAX_PLACE_ATTEMPTS = 5;
+bool CONSTRAINTS_HALL_ONLY = false;
 
 
 typedef std::vector<std::vector<int>> Grid;
@@ -187,15 +188,16 @@ void place_rooms(const ConstraintSet &hall_constraints = {}) {
                 }
             }
             if (too_close) continue;
-            bool breaks_hall_constraint = false;
-            for (const Point& point: hall_constraints) {
-                if (room.has_point(point)) {
-                    breaks_hall_constraint = true;
-                    break;
-                }  
+            if (CONSTRAINTS_HALL_ONLY) {
+                bool breaks_hall_constraint = false;
+                for (const Point& point: hall_constraints) {
+                    if (room.has_point(point)) {
+                        breaks_hall_constraint = true;
+                        break;
+                    }  
+                }
+                if (breaks_hall_constraint) continue;
             }
-            if (breaks_hall_constraint) continue;
-
             rooms.push_back(room);
             room_is_placed = true;
             for (int x = room.x1; x <= room.x2; x++) {
