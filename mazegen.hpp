@@ -114,6 +114,12 @@ public:
 // constraints are between (1, 1) and (rows - 2, cols - 2)
 // those points are fixed on the generation
 Grid generate(int cols, int rows, const ConstraintSet &hall_constraints = {}) {
+    rooms.clear();
+    halls.clear();
+    doors.clear();
+    maze_region_id = MAZE_ID_START;
+    door_id = DOOR_ID_START;
+    
     if (rows % 2 == 0) rows -= 1;
     if (cols % 2 == 0) cols -= 1;
     
