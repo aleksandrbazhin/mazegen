@@ -19,14 +19,14 @@ const int DOOR_ID_START = 20000;
 const int ROOM_ID_START = 10000;
 const int MAZE_ID_START = 0;
 
-float DEADEND_CHANCE = 0.3;
-float WIGGLE_CHANCE = 0.5;
-float EXTRA_CONNECTION_CHANCE = 0.2;
-int ROOM_NUMBER = 20;
-int ROOM_SIZE_MIN = 7;
-int ROOM_SIZE_MAX = 11;
-int MAX_PLACE_ATTEMPTS = 5;
-bool CONSTRAINTS_HALL_ONLY = false;
+static float DEADEND_CHANCE = 0.3;
+static float WIGGLE_CHANCE = 0.5;
+static float EXTRA_CONNECTION_CHANCE = 0.2;
+static int ROOM_NUMBER = 20;
+static int ROOM_SIZE_MIN = 7;
+static int ROOM_SIZE_MAX = 11;
+static int MAX_PLACE_ATTEMPTS = 5;
+static bool CONSTRAINTS_HALL_ONLY = false;
 
 
 typedef std::vector<std::vector<int>> Grid;
@@ -94,15 +94,15 @@ struct Door {
     bool is_hidden = false;
 };
 
-bool is_hall(int id) {
+inline bool is_hall(int id) {
     return id >= MAZE_ID_START && id < ROOM_ID_START;
 }
 
-bool is_room(int id) {
+inline bool is_room(int id) {
     return id >= ROOM_ID_START && id < DOOR_ID_START;
 }
 
-bool is_door(int id) {
+inline bool is_door(int id) {
     return id >= DOOR_ID_START;
 }
 
