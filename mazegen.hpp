@@ -139,6 +139,11 @@ void set_seed(unsigned int seed) {
     predefined_seed = seed;
 }
 
+int get_region_id(const Point& p) {
+    if (!is_in_bounds(p)) return NOTHING_ID;
+    return grid[p.y][p.x];
+}
+
 private:
 
 std::vector<Room> rooms;
@@ -243,12 +248,6 @@ bool is_in_bounds(const Point& p) {
 
 bool is_cell_empty(const Point& p) {
     return is_in_bounds(p) && grid[p.y][p.x] == NOTHING_ID;
-}
-
-
-int get_region_id(const Point& p) {
-    if (!is_in_bounds(p)) return NOTHING_ID;
-    return grid[p.y][p.x];
 }
 
 
