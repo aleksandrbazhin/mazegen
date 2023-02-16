@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MazeGen
+#define MazeGen
 
 #include <vector>
 #include <stack>
@@ -433,3 +434,5 @@ void reconnect_dead_ends() {
 
 };
 }
+
+#endif
