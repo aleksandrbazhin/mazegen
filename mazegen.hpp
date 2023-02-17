@@ -15,8 +15,8 @@
 namespace mazegen {
 
 const int NOTHING_ID = -1;
-const int DOOR_ID_START = 20000;
-const int ROOM_ID_START = 10000;
+const int DOOR_ID_START = 2000000;
+const int ROOM_ID_START = 1000000;
 const int MAZE_ID_START = 0;
 
 static float DEADEND_CHANCE = 0.3;
@@ -114,11 +114,7 @@ public:
 // constraints are between (1, 1) and (rows - 2, cols - 2)
 // those points are fixed on the generation
 Grid generate(int cols, int rows, const ConstraintSet &hall_constraints = {}) {
-    rooms.clear();
-    halls.clear();
-    doors.clear();
-    maze_region_id = MAZE_ID_START;
-    door_id = DOOR_ID_START;
+    clear();
     
     if (rows % 2 == 0) rows -= 1;
     if (cols % 2 == 0) cols -= 1;
@@ -163,19 +159,27 @@ int grid_rows;
 int grid_cols;
 Grid grid;
 int maze_region_id = MAZE_ID_START;
+int room_id = ROOM_ID_START;
 int door_id = DOOR_ID_START;
 Points dead_ends;
+
 
 bool is_seed_set = false;
 unsigned int predefined_seed;
 
+void clear() {
+    rooms.clear();
+    halls.clear();
+    doors.clear();
+    maze_region_id = MAZE_ID_START;
+    room_id = ROOM_ID_START;
+    door_id = DOOR_ID_START;
+}
 
 void place_rooms(const ConstraintSet &hall_constraints = {}) {
     std::uniform_int_distribution<> room_size_distribution(ROOM_SIZE_MIN, ROOM_SIZE_MAX);
     std::uniform_int_distribution<> room_position_x_distribution(0, grid_cols - ROOM_SIZE_MIN - (ROOM_SIZE_MAX - ROOM_SIZE_MIN) / 2);
     std::uniform_int_distribution<> room_position_y_distribution(0, grid_rows - ROOM_SIZE_MIN - (ROOM_SIZE_MAX - ROOM_SIZE_MIN) / 2);
-    
-    int room_id = ROOM_ID_START;
 
     for (int i = 0; i < ROOM_NUMBER; i++) {
         bool room_is_placed = false;
@@ -222,9 +226,28 @@ void place_rooms(const ConstraintSet &hall_constraints = {}) {
     }
 }
 
+// adds only those constraints that have odd x and y and are not out of grid bounds
+Points fix_constraint_points(const ConstraintSet& hall_constraints) {
+    Points constraints;
+    constraints.reserve(hall_constraints.size());
+    for (auto& constraint: hall_constraints) {
+        if (constraint.x < 1 || constraint.y < 1 || constraint.y > grid_rows || constraint.x > grid_cols) {
+            std::cout << "Warning! Constraint (" << constraint.x << ", " <<  constraint.y << 
+                ") is out of grid bounds (should be in [1, n - 2]), skipping" << std::endl;
+        } else if (constraint.x % 2 == 0 || constraint.y % 2 == 0) {
+            std::cout << "Warning! Constraint (" << constraint.x << ", " <<  constraint.y << 
+                ") must have odd x and y, skipping" << std::endl;
+        } else {
+            constraints.push_back(constraint);
+        }
+    }
+    return constraints;
+}
+
+
 // constraints are the points which are always in the maze, never empty
-void build_maze(const ConstraintSet& constraints) {
-    Points unmet_constraints(constraints.begin(), constraints.end());
+void build_maze(const ConstraintSet& hall_constraints) {
+    Points unmet_constraints = fix_constraint_points(hall_constraints);
     // first grow from the constraints
     while (!unmet_constraints.empty()) {
         Point p = unmet_constraints.back();
@@ -301,7 +324,8 @@ void grow_maze(Point start_p) {
 }
 
 // adding potential doors
-void add_connector(const Point& test_point, const Point& connect_point, std::map<int, Points>& connections) {
+void add_connector(const Point& test_point, const Point& connect_point, 
+        std::unordered_map<int, Points>& connections) {
     int region_id = get_region_id(test_point);
     if (region_id != NOTHING_ID) {
         if (connections.find(region_id) == connections.end()) {
@@ -315,9 +339,8 @@ void add_connector(const Point& test_point, const Point& connect_point, std::map
 void connect_regions() {
     if (rooms.empty()) return;
     std::set<int> connected_rooms; // prevent room double connections to the same region
-    // int door_id = DOOR_ID;
     for (auto& room: rooms) {
-        std::map<int, Points> connections;
+        std::unordered_map<int, Points> connections;
         for (int x = room.x1; x <= room.x2; x += 2) {
             add_connector(Point{x, room.y1 - 2}, Point{x, room.y1 - 1}, connections);
             add_connector(Point{x, room.y2 + 2}, Point{x, room.y2 + 1}, connections);
@@ -349,14 +372,14 @@ bool is_dead_end(const Point& p) {
 }
 
 
-void reduce_maze(const ConstraintSet& constraints) {
+void reduce_maze(const ConstraintSet& hall_constraints) {
     bool done = false;
     std::uniform_real_distribution<double> reduce_distribution(0, 1);
     for (auto& end_p : dead_ends) {
         if (reduce_distribution(rng) < DEADEND_CHANCE) continue;
         Point p{end_p};
         while (is_dead_end(p)) {
-            if (constraints.find(p) != constraints.end()) break; // do not remove constrained points
+            if (hall_constraints.find(p) != hall_constraints.end()) break; // do not remove constrained points
             for (const auto& d : CARDINALS) {
                 Point test_point = p.neighbour_to(d);
                 if (get_region_id(test_point) != NOTHING_ID) {
