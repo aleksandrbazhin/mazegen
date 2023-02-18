@@ -52,7 +52,7 @@ std::unordered_map<int, sf::Color> get_random_region_colors(
     return color_map;
 }
 
-float ch = 0.0;
+float chance = 0.0;
 bool trigger = false;
 
 void render_game(sf::RenderWindow &window) {
@@ -64,16 +64,19 @@ void render_game(sf::RenderWindow &window) {
     mazegen::ROOM_SIZE_MIN = 5;
     mazegen::ROOM_SIZE_MAX = 11;
 
-    mazegen::RECONNECT_DEADENDS = trigger;
-    trigger = !trigger;
+
+    mazegen::RECONNECT_DEADENDS_CHANCE = chance;
+    
+    // mazegen::RECONNECT_DEADENDS = trigger;
+    // trigger = !trigger;
     // mazegen::DEADEND_CHANCE = 1.0 - ch;
-    // ch += 0.05;
+    chance += 0.1;
 
     int SEED = 101;
 
     auto gen = mazegen::Generator();
     gen.set_seed(SEED);
-    mazegen::ConstraintSet constraints {{1, 1}, {WIDTH - 2, HEIGHT - 2}};
+    mazegen::PointSet constraints {{1, 1}, {WIDTH - 2, HEIGHT - 2}};
     auto grid = gen.generate(WIDTH, HEIGHT, constraints);
     auto doors = gen.get_doors();
     // auto hall_colors = get_random_region_colors(gen.get_halls());

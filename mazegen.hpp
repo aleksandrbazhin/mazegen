@@ -22,7 +22,7 @@ const int MAZE_ID_START = 0;
 // if 0 there are no deadends, if 1.0 - there is no free space in the maze, everything is filled with halls
 static float DEADEND_CHANCE = 0.3;
 // true if use reconnect_deadends() step - connect deadends adjacent to rooms with a door
-static bool RECONNECT_DEADENDS = false; 
+static float RECONNECT_DEADENDS_CHANCE = 1.0; 
 static float WIGGLE_CHANCE = 0.5;
 static float EXTRA_CONNECTION_CHANCE = 0.2;
 static int ROOM_NUMBER = 20;
@@ -65,14 +65,14 @@ struct Point {
 };
 
 typedef std::vector<Point> Points;
-typedef std::set<Point> ConstraintSet;
+typedef std::set<Point> PointSet;
 
 struct Room {
     int x1;
     int y1;
     int x2;
     int y2;
-    int id;    
+    int id;
 
     bool too_close(const Room& another, int distance) {
         return x1 - distance < another.x2 && x2 + distance > another.x1 && 
@@ -122,7 +122,7 @@ public:
 
 // constraints are between (1, 1) and (rows - 2, cols - 2)
 // those points are fixed on the generation
-Grid generate(int cols, int rows, const ConstraintSet &hall_constraints = {}) {
+Grid generate(int cols, int rows, const PointSet &hall_constraints = {}) {
     clear();
     
     if (rows % 2 == 0) rows -= 1;
@@ -142,7 +142,7 @@ Grid generate(int cols, int rows, const ConstraintSet &hall_constraints = {}) {
     connect_regions();
     reduce_maze(hall_constraints);
     reduce_connectivity();
-    if (RECONNECT_DEADENDS) reconnect_dead_ends();
+    reconnect_dead_ends();
     return grid;
 }
 
@@ -207,7 +207,7 @@ void clear() {
 
 
 // places the rooms randomly
-void place_rooms(const ConstraintSet &hall_constraints = {}) {
+void place_rooms(const PointSet &hall_constraints = {}) {
     std::uniform_int_distribution<> room_size_distribution(ROOM_SIZE_MIN, ROOM_SIZE_MAX);
     std::uniform_int_distribution<> room_position_x_distribution(0, grid_cols - ROOM_SIZE_MIN - (ROOM_SIZE_MAX - ROOM_SIZE_MIN) / 2);
     std::uniform_int_distribution<> room_position_y_distribution(0, grid_rows - ROOM_SIZE_MIN - (ROOM_SIZE_MAX - ROOM_SIZE_MIN) / 2);
@@ -258,7 +258,7 @@ void place_rooms(const ConstraintSet &hall_constraints = {}) {
 }
 
 // adds only those constraints that have odd x and y and are not out of grid bounds
-Points fix_constraint_points(const ConstraintSet& hall_constraints) {
+Points fix_constraint_points(const PointSet& hall_constraints) {
     Points constraints;
     constraints.reserve(hall_constraints.size());
     for (auto& constraint: hall_constraints) {
@@ -277,7 +277,7 @@ Points fix_constraint_points(const ConstraintSet& hall_constraints) {
 
 
 // constraints are the points which are always in the maze, never empty
-void build_maze(const ConstraintSet& hall_constraints) {
+void build_maze(const PointSet& hall_constraints) {
     Points unmet_constraints = fix_constraint_points(hall_constraints);
     // first grow from the constraints
     while (!unmet_constraints.empty()) {
@@ -368,26 +368,26 @@ void add_connector(const Point& test_point, const Point& connect_point,
     }
 }
 
-
 // connects rooms to the adjacent halls at least once for each maze region
 void connect_regions() {
     if (rooms.empty()) return;
     std::set<int> connected_rooms; // prevent room double connections to the same region
     for (auto& room: rooms) {
-        std::unordered_map<int, Points> connections;
+        // add all potential connectors around the room to other regions
+        std::unordered_map<int, Points> connectors_map;
         for (int x = room.x1; x <= room.x2; x += 2) {
-            add_connector(Point{x, room.y1 - 2}, Point{x, room.y1 - 1}, connections);
-            add_connector(Point{x, room.y2 + 2}, Point{x, room.y2 + 1}, connections);
+            add_connector(Point{x, room.y1 - 2}, Point{x, room.y1 - 1}, connectors_map);
+            add_connector(Point{x, room.y2 + 2}, Point{x, room.y2 + 1}, connectors_map);
         }
         for (int y = room.y1; y <= room.y2; y += 2) {
-            add_connector(Point{room.x1 - 2, y}, Point{room.x1 - 1, y}, connections);
-            add_connector(Point{room.x2 + 2, y}, Point{room.x2 + 1, y}, connections);                
+            add_connector(Point{room.x1 - 2, y}, Point{room.x1 - 1, y}, connectors_map);
+            add_connector(Point{room.x2 + 2, y}, Point{room.x2 + 1, y}, connectors_map);                
         }
-        for (auto& region_connectors: connections) {
-            int region_id = region_connectors.first;
+        // select random connector from the connector map
+        for (auto& [region_id, region_connect_points]: connectors_map) {
             if (connected_rooms.find(region_id) != connected_rooms.end()) continue;
-            std::uniform_int_distribution<> connector_distribution(0, region_connectors.second.size() - 1);
-            Point p = region_connectors.second[connector_distribution(rng)];
+            std::uniform_int_distribution<> connector_distribution(0, region_connect_points.size() - 1);
+            Point p = region_connect_points[connector_distribution(rng)];
             grid[p.y][p.x] = ++door_id;
             doors.push_back({p, door_id, room.id, region_id});
         }
@@ -408,7 +408,7 @@ bool is_dead_end(const Point& p) {
 
 
 // removes blind parts of the maze with (1.0 - DEADEND_CHANCE) probability
-void reduce_maze(const ConstraintSet& hall_constraints) {
+void reduce_maze(const PointSet& hall_constraints) {
     bool done = false;
     std::uniform_real_distribution<double> reduce_distribution(0, 1);
     for (auto& end_p : dead_ends) {
@@ -470,6 +470,8 @@ void reduce_connectivity() {
 
 // if a dead end is adjacent to the room, connects it by the door
 void reconnect_dead_ends() {
+    std::uniform_real_distribution<double> reconnect_distribution(0, 1);
+        
     for (const Point& dead_end: dead_ends) {
         int hall_id = get_region_id(dead_end);
         if (hall_id == NOTHING_ID) continue;
@@ -488,6 +490,7 @@ void reconnect_dead_ends() {
                 candidates[door_p] = neighbor_id;
             }
         }
+        if (reconnect_distribution(rng) >= RECONNECT_DEADENDS_CHANCE) continue;
         if (connection_number > 1) continue; // not a true dead end
         if (candidates.size() == 0) continue;
 
