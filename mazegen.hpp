@@ -93,7 +93,7 @@ struct Door {
     int id;
     int id_from;
     int id_to;
-    bool is_hidden = false;
+    bool is_hidden = false; // the doors removed in the "reduce_connectivity" step become hidden
 };
 
 
@@ -156,6 +156,19 @@ int get_region_id(const Point& p) {
     if (!is_in_bounds(p)) return NOTHING_ID;
     return grid[p.y][p.x];
 }
+
+const std::vector<Room> get_rooms() const {
+    return rooms;
+}
+
+const std::vector<Hall> get_halls() const {
+    return halls;
+}
+
+const std::vector<Door> get_doors() const {
+    return doors;
+}
+
 
 private:
 
