@@ -19,15 +19,18 @@ const int DOOR_ID_START = 2000000;
 const int ROOM_ID_START = 1000000;
 const int MAZE_ID_START = 0;
 
+// if 0 there are no deadends, if 1.0 - there is no free space in the maze, everything is filled with halls
 static float DEADEND_CHANCE = 0.3;
+// true if use reconnect_deadends() step - connect deadends adjacent to rooms with a door
+static bool RECONNECT_DEADENDS = false; 
 static float WIGGLE_CHANCE = 0.5;
 static float EXTRA_CONNECTION_CHANCE = 0.2;
 static int ROOM_NUMBER = 20;
 static int ROOM_SIZE_MIN = 7;
 static int ROOM_SIZE_MAX = 11;
 static int MAX_PLACE_ATTEMPTS = 5;
-static bool CONSTRAINTS_HALL_ONLY = false;
-
+// true if hall constaraints are to be exclusively i halls, not in rooms
+static bool CONSTRAINTS_HALL_ONLY = false; 
 
 typedef std::vector<std::vector<int>> Grid;
 
@@ -139,7 +142,7 @@ Grid generate(int cols, int rows, const ConstraintSet &hall_constraints = {}) {
     connect_regions();
     reduce_maze(hall_constraints);
     reduce_connectivity();
-    reconnect_dead_ends();
+    if (RECONNECT_DEADENDS) reconnect_dead_ends();
     return grid;
 }
 

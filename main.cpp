@@ -30,43 +30,6 @@ void prepare() {
 }
 
 
-// mazegen::Grid generate_dungeon() {
-//     auto gen = mazegen::Generator();
-//     // gen.set_seed(101);
-//     mazegen::ConstraintSet constraints {{1, 1}, {WIDTH - 2, HEIGHT - 2}};
-//     return gen.generate(WIDTH, HEIGHT, constraints);
-// }
-
-
-// sf::VertexArray make_dungeon_map() {
-    // auto grid = generate_dungeon();
-    
-    // sf::VertexArray map_vertices;
-    // map_vertices.setPrimitiveType(sf::Quads);
-    // map_vertices.resize(HEIGHT * WIDTH * 4);
-
-    // for (int y = 0; y < grid.size(); y++) {
-    //      for (int x = 0; x < grid[0].size(); x++) {
-    //         if (grid[y][x] != mapgen::NOTHING_ID) {
-    //             sf::Vertex* quad = &map_vertices[(x + y * WIDTH) * 4];
-
-    //             quad[0].position = sf::Vector2f(x * TILE_SIZE, y * TILE_SIZE);
-    //             quad[1].position = sf::Vector2f((x + 1) * TILE_SIZE, y * TILE_SIZE);
-    //             quad[2].position = sf::Vector2f((x + 1) * TILE_SIZE, (y + 1) * TILE_SIZE);
-    //             quad[3].position = sf::Vector2f(x  * TILE_SIZE, (y + 1) * TILE_SIZE);
-
-    //             quad[0].texCoords = sf::Vector2f(0, 0);
-    //             quad[1].texCoords = sf::Vector2f(TILE_SIZE, 0);
-    //             quad[2].texCoords = sf::Vector2f(TILE_SIZE, TILE_SIZE);
-    //             quad[3].texCoords = sf::Vector2f(0, TILE_SIZE);
-    //         }
-    //     }
-    // }
-//     return map_vertices;
-// }
-
-float ch = 0.0;
-
 template <typename T>
 std::unordered_map<int, sf::Color> get_random_region_colors(
     const std::vector<T>& regions, bool use_seed = false, int seed = 0) {
@@ -87,15 +50,12 @@ std::unordered_map<int, sf::Color> get_random_region_colors(
     }
 
     return color_map;
-
 }
 
-void render_game(sf::RenderWindow &window) {
-    // auto map = make_dungeon_map();
-    // window.clear();
-    // window.draw(map, &floor_texture);
-    // auto grid = generate_dungeon();
+float ch = 0.0;
+bool trigger = false;
 
+void render_game(sf::RenderWindow &window) {
     mazegen::EXTRA_CONNECTION_CHANCE = 0.0;
     mazegen::WIGGLE_CHANCE = 0.3;
     mazegen::DEADEND_CHANCE = 0.0;
@@ -103,16 +63,21 @@ void render_game(sf::RenderWindow &window) {
     mazegen::ROOM_NUMBER = 150;
     mazegen::ROOM_SIZE_MIN = 5;
     mazegen::ROOM_SIZE_MAX = 11;
+
+    mazegen::RECONNECT_DEADENDS = trigger;
+    trigger = !trigger;
     // mazegen::DEADEND_CHANCE = 1.0 - ch;
     // ch += 0.05;
 
+    int SEED = 101;
+
     auto gen = mazegen::Generator();
-    // gen.set_seed(101);
+    gen.set_seed(SEED);
     mazegen::ConstraintSet constraints {{1, 1}, {WIDTH - 2, HEIGHT - 2}};
     auto grid = gen.generate(WIDTH, HEIGHT, constraints);
     auto doors = gen.get_doors();
-    auto hall_colors = get_random_region_colors(gen.get_halls());
-    // auto hall_colors = get_random_region_colors(gen.get_halls(), true, 101);
+    // auto hall_colors = get_random_region_colors(gen.get_halls());
+    auto hall_colors = get_random_region_colors(gen.get_halls(), true, SEED);
 
     sf::VertexArray map_vertices;
     map_vertices.setPrimitiveType(sf::Quads);
