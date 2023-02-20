@@ -20,7 +20,7 @@ const int ROOM_ID_START = 1000000;
 const int MAZE_ID_START = 0;
 
 // if 0 there are no deadends, if 1.0 - there is no free space in the maze, everything is filled with halls
-static float DEADEND_CHANCE = 0.3;
+static float DEADEND_CHANCE = 0.0;
 // true if use reconnect_deadends() step - connect deadends adjacent to rooms with a door
 static float RECONNECT_DEADENDS_CHANCE = 1.0; 
 static float WIGGLE_CHANCE = 0.5;
@@ -140,8 +140,8 @@ Grid generate(int cols, int rows, const PointSet &hall_constraints = {}) {
     place_rooms(hall_constraints);
     build_maze(hall_constraints);
     connect_regions();
-    reduce_maze(hall_constraints);
     reduce_connectivity();
+    reduce_maze(hall_constraints);
     reconnect_dead_ends();
     return grid;
 }
@@ -322,28 +322,40 @@ void grow_maze(Point start_p) {
     }
     ++maze_region_id;
     halls.push_back({p, maze_region_id});
-
     grid[p.y][p.x] = maze_region_id;
+
+    std::set<Point> dead_ends_set{p};
     std::stack<Point> test_points;
     test_points.push(Point(p));
-    std::uniform_real_distribution<double> dir_chance_distribution(0, 1);
+    std::uniform_real_distribution<double> directions_distribution(0.0, 1.0);
     Directions random_dirs {CARDINALS};
     bool dead_end = false;
     Direction dir;
+    // std::cout << " Grow from ";
+    // std::cout << " " << p.x  << " " << p.y << std::endl;
+
+
+
     while (!test_points.empty()) {
-        if (dir_chance_distribution(rng) < WIGGLE_CHANCE)
+        if (directions_distribution(rng) < WIGGLE_CHANCE) {
             std::shuffle(random_dirs.begin(), random_dirs.end(), rng);
+        }
         dead_end = true;
         for (Direction& d : random_dirs) {
             Point test = p.neighbour_to(d * 2);
+            // test for unoccupied space to grow
             if (is_cell_empty(test)) {
                 dir = d;
                 dead_end = false;
                 break;
             }
         }
+        // nowhere to grow
         if (dead_end) {
-            if (is_dead_end(p)) dead_ends.push_back(p);
+            if (is_dead_end(p)) {
+                dead_ends_set.insert(p);
+                // std::cout << " p " << p.x  << " " << p.y << std::endl;
+            }
             p = test_points.top();
             test_points.pop();
         } else {
@@ -354,7 +366,9 @@ void grow_maze(Point start_p) {
             test_points.push(Point(p));
         }
     }
+    dead_ends.insert(dead_ends.end(), dead_ends_set.begin(), dead_ends_set.end());
 }
+
 
 // adding potential doors
 void add_connector(const Point& test_point, const Point& connect_point, 
@@ -367,6 +381,7 @@ void add_connector(const Point& test_point, const Point& connect_point,
         connections[region_id].push_back(connect_point);
     }
 }
+
 
 // connects rooms to the adjacent halls at least once for each maze region
 void connect_regions() {
@@ -401,7 +416,9 @@ bool is_dead_end(const Point& p) {
     int passways = 0;
     for (const auto& d : CARDINALS) {
         Point test_p = p.neighbour_to(d);
-        if (get_region_id(test_p) != NOTHING_ID) passways += 1;
+        if (get_region_id(test_p) != NOTHING_ID) {
+            passways += 1;
+        }
     }
     return passways == 1;
 }
@@ -409,8 +426,16 @@ bool is_dead_end(const Point& p) {
 
 // removes blind parts of the maze with (1.0 - DEADEND_CHANCE) probability
 void reduce_maze(const PointSet& hall_constraints) {
+
+    // std::cout << "before: " << std::endl;  
+    // for (auto& end_p : dead_ends) {
+    //     std::cout << "(" << end_p.x << ", " << end_p.y << ") ";
+    // }
+    // std::cout << std::endl;
+
     bool done = false;
-    std::uniform_real_distribution<double> reduce_distribution(0, 1);
+    std::uniform_real_distribution<double> reduce_distribution(0.0, 1.0);
+
     for (auto& end_p : dead_ends) {
         if (reduce_distribution(rng) < DEADEND_CHANCE) continue;
         Point p{end_p};
@@ -428,6 +453,18 @@ void reduce_maze(const PointSet& hall_constraints) {
         end_p.x = p.x;
         end_p.y = p.y;
     }
+    dead_ends.erase(
+        std::remove_if(
+            dead_ends.begin(),
+            dead_ends.end(),
+            [this](Point p){return !is_dead_end(p);}),
+        dead_ends.end()
+    );
+    // std::cout << "after: " << std::endl;
+    // for (auto& end_p : dead_ends) {
+    //     std::cout << "(" << end_p.x << ", " << end_p.y << ") ";
+    // }
+    // std::cout << std::endl;
 }
 
 

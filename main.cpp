@@ -4,21 +4,31 @@
 #include <chrono>
 #include "mazegen.hpp"
 
-const int TILE_SIZE = 16;
-const int HEIGHT = 61;
-const int WIDTH = 115;
+// const int TILE_SIZE = 16;
+// const int HEIGHT = 61;
+// const int WIDTH = 115;
 
 // const int TILE_SIZE = 8;
 // const int HEIGHT = 121;
 // const int WIDTH = 231;
+// const int ROOMS = 700;
+// const int ROOM_SIZE_MIN = 7;
+// const int ROOM_SIZE_MAX = 11;
 
 // const int TILE_SIZE = 1;
 // const int HEIGHT = 961;
 // const int WIDTH = 1841;
+// const int ROOMS = 1000;
+// const int ROOM_SIZE_MIN = 15;
+// const int ROOM_SIZE_MAX = 59;
 
-// const int TILE_SIZE = 32;
-// const int HEIGHT = 25;
-// const int WIDTH = 25;
+const int TILE_SIZE = 32;
+const int HEIGHT = 27;
+const int WIDTH = 43;
+const int ROOMS = 15;
+const int ROOM_SIZE_MIN = 5;
+const int ROOM_SIZE_MAX = 7;
+
 
 
 sf::Texture floor_texture;
@@ -58,18 +68,14 @@ bool trigger = false;
 void render_game(sf::RenderWindow &window) {
     mazegen::EXTRA_CONNECTION_CHANCE = 0.0;
     mazegen::WIGGLE_CHANCE = 0.3;
-    mazegen::DEADEND_CHANCE = 0.0;
+    mazegen::DEADEND_CHANCE = chance;
 
-    mazegen::ROOM_NUMBER = 150;
-    mazegen::ROOM_SIZE_MIN = 5;
-    mazegen::ROOM_SIZE_MAX = 11;
+    mazegen::ROOM_NUMBER = ROOMS;
+    mazegen::ROOM_SIZE_MIN = ROOM_SIZE_MIN;
+    mazegen::ROOM_SIZE_MAX = ROOM_SIZE_MAX;
 
-
-    mazegen::RECONNECT_DEADENDS_CHANCE = chance;
+    mazegen::RECONNECT_DEADENDS_CHANCE = 0.0;
     
-    // mazegen::RECONNECT_DEADENDS = trigger;
-    // trigger = !trigger;
-    // mazegen::DEADEND_CHANCE = 1.0 - ch;
     chance += 0.1;
 
     int SEED = 101;
@@ -113,6 +119,26 @@ void render_game(sf::RenderWindow &window) {
     window.clear();
     window.draw(map_vertices, &floor_texture);
     
+    // sf::Font font;
+    // if (font.loadFromFile("assets/RobotoMono-Bold.ttf")) {
+    //     for (int y = 0; y < grid.size(); y++) {
+    //         for (int x = 0; x < grid[0].size(); x++) {
+    //             if (grid[y][x] != mazegen::NOTHING_ID) {
+    //                 sf::Text text;
+    //                 text.setPosition(x * TILE_SIZE + 2, y * TILE_SIZE + 2);
+    //                 text.setFont(font); // font is a sf::Font
+    //                 text.setString(std::to_string(x) + "," + std::to_string(y));
+    //                 text.setCharacterSize(10); // in pixels, not points!
+    //                 // text.setFillColor(sf::Color::Red);
+    //                 // text.setStyle(sf::Text::Bold | sf::Text::Underlined);
+    //                 window.draw(text);
+    //             }
+    //         }
+    //     }
+    // }
+
+
+
     // sf::Font font;
     // if (font.loadFromFile("assets/RobotoMono-Bold.ttf")) {
     //     for (int y = 0; y < grid.size(); y++) {
