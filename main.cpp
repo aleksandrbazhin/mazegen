@@ -62,30 +62,26 @@ std::unordered_map<int, sf::Color> get_random_region_colors(
     return color_map;
 }
 
-float chance = 0.0;
-bool trigger = false;
-
 void render_game(sf::RenderWindow &window) {
-    mazegen::EXTRA_CONNECTION_CHANCE = 0.0;
-    mazegen::WIGGLE_CHANCE = 1.0;
-    mazegen::DEADEND_CHANCE = chance;
-
-    mazegen::ROOM_NUMBER = ROOMS;
-    mazegen::ROOM_SIZE_MIN = ROOM_SIZE_MIN;
-    mazegen::ROOM_SIZE_MAX = ROOM_SIZE_MAX;
-
-    mazegen::RECONNECT_DEADENDS_CHANCE = 0.0;
+    mazegen::Config cfg;
     
-    chance += 0.1;
+    cfg.EXTRA_CONNECTION_CHANCE = 0.0;
+    cfg.WIGGLE_CHANCE = 1.0;
+    cfg.DEADEND_CHANCE = 0.0;
 
+    cfg.ROOM_NUMBER = ROOMS;
+    cfg.ROOM_SIZE_MIN = ROOM_SIZE_MIN;
+    cfg.ROOM_SIZE_MAX = ROOM_SIZE_MAX;
+
+    cfg.RECONNECT_DEADENDS_CHANCE = 0.0;
+    
     int SEED = 101;
 
     auto gen = mazegen::Generator();
-    gen.set_seed(SEED);
+    // gen.set_seed(SEED);
     mazegen::PointSet constraints {{1, 1}, {WIDTH - 2, HEIGHT - 2}};
-    auto grid = gen.generate(WIDTH, HEIGHT, constraints);
+    auto grid = gen.generate(WIDTH, HEIGHT, cfg, constraints);
     auto doors = gen.get_doors();
-    // auto hall_colors = get_random_region_colors(gen.get_halls());
     auto hall_colors = get_random_region_colors(gen.get_halls(), true, SEED);
 
     sf::VertexArray map_vertices;
