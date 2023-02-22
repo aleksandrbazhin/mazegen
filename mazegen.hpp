@@ -30,7 +30,7 @@ struct Config {
     int ROOM_SIZE_MIN = 7;
     int ROOM_SIZE_MAX = 11;
     int MAX_PLACE_ATTEMPTS = 5;
-    // true if hall constaraints are to be exclusively i halls, not in rooms
+    // true if hall constaraints are to be exclusively in halls, not in rooms
     bool CONSTRAIN_HALL_ONLY = false;     
 };
 
