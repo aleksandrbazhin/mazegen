@@ -15,29 +15,34 @@
 namespace mazegen {
 
 const int NOTHING_ID = -1;
-const int DOOR_ID_START = 2000000;
-const int ROOM_ID_START = 1000000;
-const int MAZE_ID_START = 0;
+const int MAX_ROOMS = 1000000;
+const int HALL_ID_START = 0;
+const int ROOM_ID_START = MAX_ROOMS;
+const int DOOR_ID_START = MAX_ROOMS * 2;
 
 
 struct Config {
-    float DEADEND_CHANCE = 0.3;
-    // true if use reconnect_deadends() step - connect deadends adjacent to rooms with a door
-    float RECONNECT_DEADENDS_CHANCE = 1.0; 
+    // Probability to not remove deadends
+    float DEADEND_CHANCE = 0.5;
+    // True if use reconnect_deadends() step - connect deadends adjacent to rooms with a door
+    float RECONNECT_DEADENDS_CHANCE = 0.5;
+    // Probability for a hall to change direction during growth
     float WIGGLE_CHANCE = 0.5;
+    // All unneccessary doors are removed with this probability
     float EXTRA_CONNECTION_CHANCE = 0.0;
-    int ROOM_NUMBER = 20;
+    // How many times room placement is attempted
+    int ROOM_BASE_NUMBER = 30;
+    // Room minimum dimension
     int ROOM_SIZE_MIN = 7;
-    int ROOM_SIZE_MAX = 11;
-    int MAX_PLACE_ATTEMPTS = 5;
-    // true if hall constaraints are to be exclusively in halls, not in rooms
+    // Room maximum dimension
+    int ROOM_SIZE_MAX = 9;
+    // True if hall constaraints are to be exclusively in halls, not in rooms
     bool CONSTRAIN_HALL_ONLY = false;     
 };
 
-
 typedef std::vector<std::vector<int>> Grid;
 
-// used to iterate neighbors aroubd point
+// Used to iterate through neighbors to a point
 struct Direction {
     int dx = 0, dy = 0;
     bool operator==(const Direction& rhs) const {
@@ -53,7 +58,7 @@ struct Direction {
 typedef std::array<Direction, 4> Directions;
 const Directions CARDINALS  {{ {0, -1}, {1, 0}, {0, 1}, {-1, 0} }};
 
-// represents point on a grid
+// Represents point on a grid
 struct Point {
     int x;
     int y;
@@ -70,7 +75,7 @@ struct Point {
 typedef std::vector<Point> Points;
 typedef std::set<Point> PointSet;
 
-// represents a room
+// Represents a room with dimensions and id
 struct Room {
     Point min_point;
     Point max_point;
@@ -88,13 +93,13 @@ struct Room {
     }
 };
 
-// represents a hall region
+// Represents a hall region
 struct Hall {
     Point start; // a point belonging to this hall
     int id;
 };
 
-// represents a door connecting a room to a maze region
+// Represents a door connecting a room to a hall region
 struct Door {
     Point position;
     int id;
@@ -105,7 +110,7 @@ struct Door {
 
 
 inline bool is_hall(int id) {
-    return id >= MAZE_ID_START && id < ROOM_ID_START;
+    return id >= HALL_ID_START && id < ROOM_ID_START;
 }
 
 
@@ -119,13 +124,13 @@ inline bool is_door(int id) {
 }
 
 
-// class to generate the maze
+// Class to generate the maze
 class Generator {
 
 public:
 
-// constraints are between (1, 1) and (rows - 2, cols - 2)
-// those points are fixed on the generation
+// constraints are Points between (1, 1) and (rows - 2, cols - 2)
+// those points are fixed on the generation - never in wall 
 Grid generate(int cols, int rows, Config config, const PointSet& hall_constraints = {}) noexcept {
     cfg = config;
     clear();
@@ -183,51 +188,50 @@ const std::vector<Door> get_doors() const noexcept {
 
 private:
 
-Config cfg{};
+Config cfg;
 
 std::vector<Room> rooms;
 std::vector<Door> doors;
 std::vector<Hall> halls;
 
-
 std::mt19937 rng;
 int grid_rows;
 int grid_cols;
 Grid grid;
-int maze_region_id = MAZE_ID_START;
+int maze_region_id = HALL_ID_START;
 int room_id = ROOM_ID_START;
 int door_id = DOOR_ID_START;
 Points dead_ends;
-
 
 bool is_seed_set = false;
 unsigned int random_seed;
 
 
-// clears all the generated data
+// Clears all the generated data for consequent generation 
 void clear() {
     grid.clear();
     rooms.clear();
     halls.clear();
     doors.clear();
-    maze_region_id = MAZE_ID_START;
+    maze_region_id = HALL_ID_START;
     room_id = ROOM_ID_START;
     door_id = DOOR_ID_START;
 }
 
 
-// places the rooms randomly
+// Places the rooms randomly
 void place_rooms(const PointSet &hall_constraints = {}) {
     std::uniform_int_distribution<> room_size_distribution(cfg.ROOM_SIZE_MIN, cfg.ROOM_SIZE_MAX);
     int room_avg = cfg.ROOM_SIZE_MIN + (cfg.ROOM_SIZE_MAX - cfg.ROOM_SIZE_MIN) / 2;
     std::uniform_int_distribution<> room_position_x_distribution(0, grid_cols - room_avg);
     std::uniform_int_distribution<> room_position_y_distribution(0, grid_rows - room_avg);
 
-    for (int i = 0; i < cfg.ROOM_NUMBER; i++) {
+    for (int i = 0; i < cfg.ROOM_BASE_NUMBER; i++) {
         bool room_is_placed = false;
-        int attempts = 0;
-        while (not room_is_placed && attempts <= cfg.MAX_PLACE_ATTEMPTS) {
-            attempts += 1;
+        // int attempts = 0;
+
+        // while (not room_is_placed && attempts <= cfg.MAX_PLACE_ATTEMPTS) {
+            // attempts += 1;
 
             int width = room_size_distribution(rng) / 2 * 2 + 1;
             int height = room_size_distribution(rng) / 2 * 2 + 1;
@@ -264,11 +268,12 @@ void place_rooms(const PointSet &hall_constraints = {}) {
                 }
             }
             room_id++;
-        }
+        // }
     }
 }
 
-// adds only those constraints that have odd x and y and are not out of grid bounds
+
+// Adds only those constraints that have odd x and y and are not out of grid bounds
 Points fix_constraint_points(const PointSet& hall_constraints) {
     Points constraints;
     constraints.reserve(hall_constraints.size());
@@ -287,7 +292,7 @@ Points fix_constraint_points(const PointSet& hall_constraints) {
 }
 
 
-// constraints are the points which are always in the maze, never empty
+// Constraints are the points which are always in the maze, never empty
 void build_maze(const PointSet& hall_constraints) {
     Points unmet_constraints = fix_constraint_points(hall_constraints);
     // first grow from the constraints
@@ -295,10 +300,6 @@ void build_maze(const PointSet& hall_constraints) {
         Point p = unmet_constraints.back();
         auto [x, y] = p;
         unmet_constraints.pop_back();
-        if (x % 2 != 1 || y % 2 != 1) {
-            std::cout << "Error: unreachable constraint" << std::endl;
-            continue;
-        }
         if (grid[y][x] != NOTHING_ID) {
             continue;
         }
@@ -313,18 +314,19 @@ void build_maze(const PointSet& hall_constraints) {
 }
 
 
-// returns true if point is inside the maze boundaries
+// Returns true if point is inside the maze boundaries
 bool is_in_bounds(const Point& p) const {
     return p.x > 0 && p.y > 0 && p.x < grid_cols - 1 && p.y < grid_rows - 1;
 }
 
 
+// Returns true if point does not have halls or rooms or doors
 bool is_cell_empty(const Point& p) const {
     return is_in_bounds(p) && grid[p.y][p.x] == NOTHING_ID;
 }
 
 
-// grows a hall from the point
+// Grows a hall from the point
 // maze_region_id is an id of an interconnected part of the maze
 void grow_maze(Point start_p) {
     Point p {start_p};
@@ -342,10 +344,6 @@ void grow_maze(Point start_p) {
     Directions random_dirs {CARDINALS};
     bool dead_end = false;
     Direction dir;
-    // std::cout << " Grow from ";
-    // std::cout << " " << p.x  << " " << p.y << std::endl;
-
-
 
     while (!test_points.empty()) {
         if (directions_distribution(rng) < cfg.WIGGLE_CHANCE) {
@@ -371,7 +369,6 @@ void grow_maze(Point start_p) {
         if (dead_end) {
             if (is_dead_end(p)) {
                 dead_ends_set.insert(p);
-                // std::cout << " p " << p.x  << " " << p.y << std::endl;
             }
             p = test_points.top();
             test_points.pop();
@@ -387,7 +384,7 @@ void grow_maze(Point start_p) {
 }
 
 
-// adding potential doors
+// Adding potential doors
 void add_connector(const Point& test_point, const Point& connect_point, 
         std::unordered_map<int, Points>& connections) {
     int region_id = get_region_id(test_point);
@@ -400,7 +397,7 @@ void add_connector(const Point& test_point, const Point& connect_point,
 }
 
 
-// connects rooms to the adjacent halls at least once for each maze region
+// Connects rooms to the adjacent halls at least once for each maze region
 void connect_regions() {
     if (rooms.empty()) return;
     std::set<int> connected_rooms; // prevent room double connections to the same region
@@ -441,18 +438,10 @@ bool is_dead_end(const Point& p) {
 }
 
 
-// removes blind parts of the maze with (1.0 - DEADEND_CHANCE) probability
+// Removes blind parts of the maze with (1.0 - DEADEND_CHANCE) probability
 void reduce_maze(const PointSet& hall_constraints) {
-
-    // std::cout << "before: " << std::endl;  
-    // for (auto& end_p : dead_ends) {
-    //     std::cout << "(" << end_p.x << ", " << end_p.y << ") ";
-    // }
-    // std::cout << std::endl;
-
     bool done = false;
     std::uniform_real_distribution<double> reduce_distribution(0.0, 1.0);
-
     for (auto& end_p : dead_ends) {
         if (reduce_distribution(rng) < cfg.DEADEND_CHANCE) continue;
         Point p{end_p};
@@ -477,15 +466,10 @@ void reduce_maze(const PointSet& hall_constraints) {
             [this](Point p){return !is_dead_end(p);}),
         dead_ends.end()
     );
-    // std::cout << "after: " << std::endl;
-    // for (auto& end_p : dead_ends) {
-    //     std::cout << "(" << end_p.x << ", " << end_p.y << ") ";
-    // }
-    // std::cout << std::endl;
 }
 
 
-// disjoint sets (union-find)
+// Disjoint sets (union-find)
 int find(const std::unordered_map<int, int>& regions, int region_id) {
     if (regions.at(region_id) == region_id) {
         return region_id;
@@ -494,7 +478,7 @@ int find(const std::unordered_map<int, int>& regions, int region_id) {
 }
 
 
-// deletes duplicate doors created previously with (1.0 - EXTRA_CONNECTION_CHANCE) probability
+// Deletes duplicate doors created previously with (1.0 - EXTRA_CONNECTION_CHANCE) probability
 void reduce_connectivity() {
     std::unordered_map<int, int> region_sets;
     for (const auto& room: rooms) {
@@ -503,9 +487,7 @@ void reduce_connectivity() {
     for (const auto& hall: halls) {
         region_sets[hall.id] = hall.id;
     }
-
     std::uniform_real_distribution<double> connection_chance_distribution(0, 1);
-    
     for (Door& door: doors) {
         int parent_room_id = find(region_sets, door.room_id); 
         int parent_hall_id = find(region_sets, door.hall_id); 
@@ -522,10 +504,10 @@ void reduce_connectivity() {
     }
 }
 
-// if a dead end is adjacent to the room, connects it by the door
+
+// If a dead end is adjacent to the room, connects it by the door
 void reconnect_dead_ends() {
-    std::uniform_real_distribution<double> reconnect_distribution(0, 1);
-        
+    std::uniform_real_distribution<double> reconnect_distribution(0.0, 1.0);
     for (const Point& dead_end: dead_ends) {
         int hall_id = get_region_id(dead_end);
         if (hall_id == NOTHING_ID) continue;

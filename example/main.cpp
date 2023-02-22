@@ -5,11 +5,10 @@ int main()
 {
     const int HEIGHT = 27;
     const int WIDTH = 43;
-    const int ROOMS = 15;
 
     mazegen::Config cfg;
-    cfg.ROOM_NUMBER = ROOMS;
-    cfg.ROOM_SIZE_MIN = 3;
+    cfg.ROOM_BASE_NUMBER = 25;
+    cfg.ROOM_SIZE_MIN = 5;
     cfg.ROOM_SIZE_MAX = 7;
  
     cfg.EXTRA_CONNECTION_CHANCE = 0.0;
@@ -29,7 +28,7 @@ int main()
             } else if (mazegen::is_door(grid[y][x])){
                 std::cout << "░░";
             } else {
-                std::cout << std::setw(2) << grid[y][x] % 1000000;
+                std::cout << std::setw(2) << grid[y][x] % mazegen::MAX_ROOMS;
             }
         }
         std::cout << std::endl;
