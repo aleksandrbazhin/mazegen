@@ -11,7 +11,7 @@ add_library(mazegen INTERFACE mazegen.hpp)
 
 add_executable(map_gen main.cpp)
 
-find_package(SFML REQUIRED graphics window system)
+find_package(SFML 2.5 COMPONENTS graphics window system REQUIRED)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE sfml-graphics sfml-window sfml-system)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)

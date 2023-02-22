@@ -67,7 +67,7 @@ bool trigger = false;
 
 void render_game(sf::RenderWindow &window) {
     mazegen::EXTRA_CONNECTION_CHANCE = 0.0;
-    mazegen::WIGGLE_CHANCE = 0.3;
+    mazegen::WIGGLE_CHANCE = 1.0;
     mazegen::DEADEND_CHANCE = chance;
 
     mazegen::ROOM_NUMBER = ROOMS;

@@ -132,7 +132,7 @@ Grid generate(int cols, int rows, const PointSet &hall_constraints = {}) {
     grid_cols = cols;
     grid = Grid(grid_rows, std::vector<int>(grid_cols, NOTHING_ID));
     if (is_seed_set) {
-        rng.seed(predefined_seed);
+        rng.seed(random_seed);
     } else {
         std::random_device rd;
         rng.seed(rd());
@@ -150,7 +150,11 @@ Grid generate(int cols, int rows, const PointSet &hall_constraints = {}) {
 // predefines generation seed
 void set_seed(unsigned int seed) {
     is_seed_set = true;
-    predefined_seed = seed;
+    random_seed = seed;
+}
+
+unsigned int get_seed() {
+    return random_seed;
 }
 
 
@@ -191,7 +195,7 @@ Points dead_ends;
 
 
 bool is_seed_set = false;
-unsigned int predefined_seed;
+unsigned int random_seed;
 
 
 // clears all the generated data
@@ -339,6 +343,12 @@ void grow_maze(Point start_p) {
     while (!test_points.empty()) {
         if (directions_distribution(rng) < WIGGLE_CHANCE) {
             std::shuffle(random_dirs.begin(), random_dirs.end(), rng);
+            for (auto& d: random_dirs) {
+                if (d == dir) {
+                    std::swap(d, random_dirs.back());
+                    break;
+                }
+            }
         }
         dead_end = true;
         for (Direction& d : random_dirs) {
