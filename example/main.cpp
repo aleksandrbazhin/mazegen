@@ -21,12 +21,18 @@ int main()
     auto gen = mazegen::Generator();
     auto grid = gen.generate(WIDTH, HEIGHT, cfg, constraints);
 
+    if (!gen.get_warnings().empty()) {
+        std::cout << gen.get_warnings() << std::endl;
+    }
+
     for (int y = 0; y < grid.size(); y++) {
         for (int x = 0; x < grid[0].size(); x++) {
             if (grid[y][x] == mazegen::NOTHING_ID) {
                 std::cout << "██";
+            } else if (constraints.find(mazegen::Point{x, y}) != constraints.end()) {
+                std::cout << "[]";
             } else if (mazegen::is_door(grid[y][x])){
-                std::cout << "░░";
+                std::cout << "▒▒";
             } else {
                 std::cout << std::setw(2) << grid[y][x] % mazegen::MAX_ROOMS;
             }

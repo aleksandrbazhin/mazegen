@@ -37,7 +37,7 @@ struct Config {
     // Room maximum dimension
     int ROOM_SIZE_MAX = 9;
     // True if hall constaraints are to be exclusively in halls, not in rooms
-    bool CONSTRAIN_HALL_ONLY = false;     
+    bool CONSTRAIN_HALL_ONLY = false;
 };
 
 typedef std::vector<std::vector<int>> Grid;
@@ -128,32 +128,24 @@ inline bool is_door(int id) {
 class Generator {
 
 public:
-
-// constraints are Points between (1, 1) and (rows - 2, cols - 2)
-// those points are fixed on the generation - never in wall 
-Grid generate(int cols, int rows, Config config, const PointSet& hall_constraints = {}) noexcept {
-    cfg = config;
+// Generates a maze
+// Constraints are Points between (1, 1) and (rows - 2, cols - 2),
+// those points are fixed on the generation - they are never a wall 
+Grid generate(int width, int height, const Config& user_config, const PointSet& hall_constraints = {}) noexcept {
     clear();
-    
-    if (rows % 2 == 0) rows -= 1;
-    if (cols % 2 == 0) cols -= 1;
-    
-    grid_rows = rows;
-    grid_cols = cols;
-    grid = Grid(grid_rows, std::vector<int>(grid_cols, NOTHING_ID));
-    if (is_seed_set) {
-        rng.seed(random_seed);
-    } else {
-        std::random_device rd;
-        rng.seed(rd());
-    }
-    place_rooms(hall_constraints);
-    build_maze(hall_constraints);
+    init_generation(width, height, user_config, hall_constraints);
+    place_rooms();
+    build_maze();
     connect_regions();
     reduce_connectivity();
-    reduce_maze(hall_constraints);
+    reduce_maze();
     reconnect_dead_ends();
     return grid;
+}
+
+
+const std::string& get_warnings() const noexcept {
+    return warnings;
 }
 
 
@@ -194,14 +186,18 @@ std::vector<Room> rooms;
 std::vector<Door> doors;
 std::vector<Hall> halls;
 
-std::mt19937 rng;
-int grid_rows;
-int grid_cols;
+std::string warnings;
+Points dead_ends;
+PointSet point_constraints;
+
+int grid_width;
+int grid_height;
 Grid grid;
+
+std::mt19937 rng;
 int maze_region_id = HALL_ID_START;
 int room_id = ROOM_ID_START;
 int door_id = DOOR_ID_START;
-Points dead_ends;
 
 bool is_seed_set = false;
 unsigned int random_seed;
@@ -213,88 +209,149 @@ void clear() {
     rooms.clear();
     halls.clear();
     doors.clear();
+    warnings.clear();
     maze_region_id = HALL_ID_START;
     room_id = ROOM_ID_START;
     door_id = DOOR_ID_START;
 }
 
 
-// Places the rooms randomly
-void place_rooms(const PointSet &hall_constraints = {}) {
-    std::uniform_int_distribution<> room_size_distribution(cfg.ROOM_SIZE_MIN, cfg.ROOM_SIZE_MAX);
-    int room_avg = cfg.ROOM_SIZE_MIN + (cfg.ROOM_SIZE_MAX - cfg.ROOM_SIZE_MIN) / 2;
-    std::uniform_int_distribution<> room_position_x_distribution(0, grid_cols - room_avg);
-    std::uniform_int_distribution<> room_position_y_distribution(0, grid_rows - room_avg);
-
-    for (int i = 0; i < cfg.ROOM_BASE_NUMBER; i++) {
-        bool room_is_placed = false;
-        // int attempts = 0;
-
-        // while (not room_is_placed && attempts <= cfg.MAX_PLACE_ATTEMPTS) {
-            // attempts += 1;
-
-            int width = room_size_distribution(rng) / 2 * 2 + 1;
-            int height = room_size_distribution(rng) / 2 * 2 + 1;
-            int room_x = room_position_x_distribution(rng) / 2 * 2 + 1;
-            int room_y = room_position_y_distribution(rng) / 2 * 2 + 1;
-
-            if (room_x + width >= grid_cols) width = (grid_cols - room_x) / 2 * 2 - 1;
-            if (room_y + height >= grid_rows) height = (grid_rows - room_y) / 2 * 2 - 1;
-
-            Room room{{room_x, room_y}, {room_x + width - 1, room_y + height - 1}, room_id};
-            bool too_close = false;
-            for (const auto& another_room : rooms) {
-                if (room.too_close(another_room, 1)) {
-                    too_close = true;
-                    break;
-                }
-            }
-            if (too_close) continue;
-            if (cfg.CONSTRAIN_HALL_ONLY) {
-                bool breaks_hall_constraint = false;
-                for (const Point& point: hall_constraints) {
-                    if (room.has_point(point)) {
-                        breaks_hall_constraint = true;
-                        break;
-                    }  
-                }
-                if (breaks_hall_constraint) continue;
-            }
-            rooms.push_back(room);
-            room_is_placed = true;
-            for (int x = room.min_point.x; x <= room.max_point.x; x++) {
-                for (int y = room.min_point.y; y <= room.max_point.y; y++) {
-                    grid[y][x]= room_id;
-                }
-            }
-            room_id++;
-        // }
+// Initializes generation internal variables
+void init_generation(int width, int height, const Config& user_config, const PointSet& hall_constraints = {}) {
+    auto fixed_size = fix_boundaries(width, height);
+    grid_width = fixed_size.first;
+    grid_height = fixed_size.second;
+    grid = Grid(grid_height, std::vector<int>(grid_width, NOTHING_ID));
+    cfg = fix_config(user_config);
+    point_constraints = fix_constraint_points(hall_constraints);
+    if (is_seed_set) {
+        rng.seed(random_seed);
+    } else {
+        std::random_device rd;
+        random_seed = rd();
+        rng.seed(random_seed);
     }
+}
+
+std::pair<int, int> fix_boundaries(int width, int height) {
+    if (width % 2 == 0 || height % 2 == 0) {
+        warnings.append("Warning! Boundaries (" 
+            + std::to_string(width) + ", " + std::to_string(height) 
+            + ") must be odd! Fixed by subtracting 1.\n"
+        );
+        if (width % 2 == 0) width -= 1;
+        if (height % 2 == 0) height -= 1;
+    }
+    return std::make_pair(width, height);    
 }
 
 
 // Adds only those constraints that have odd x and y and are not out of grid bounds
-Points fix_constraint_points(const PointSet& hall_constraints) {
-    Points constraints;
-    constraints.reserve(hall_constraints.size());
+PointSet fix_constraint_points(const PointSet& hall_constraints) {
+    PointSet constraints;
+    // constraints.reserve(hall_constraints.size());
     for (auto& constraint: hall_constraints) {
         if (!is_in_bounds(constraint)) {
-            std::cout << "Warning! Constraint (" << constraint.x << ", " <<  constraint.y << 
-                ") is out of grid bounds (should be in [1, n - 2]), skipping" << std::endl;
+            warnings.append("Warning! Constraint (" 
+                + std::to_string(constraint.x) + ", " + std::to_string(constraint.y) 
+                + ") is out of grid bounds. Skipped.\n"
+            );
         } else if (constraint.x % 2 == 0 || constraint.y % 2 == 0) {
-            std::cout << "Warning! Constraint (" << constraint.x << ", " <<  constraint.y << 
-                ") must have odd x and y, skipping" << std::endl;
+            warnings.append("Warning! Constraint (" 
+                + std::to_string(constraint.x) + ", " + std::to_string(constraint.y) 
+                + ") must have odd x and y. Skipped.\n"
+            );
         } else {
-            constraints.push_back(constraint);
+            constraints.insert(constraint);
         }
     }
     return constraints;
 }
 
+Config fix_config(const Config& user_config) {
+    Config fixed{user_config};
+    if (fixed.DEADEND_CHANCE < 0.0f || fixed.DEADEND_CHANCE > 1.0f ||
+            fixed.RECONNECT_DEADENDS_CHANCE < 0.0f || fixed.RECONNECT_DEADENDS_CHANCE > 1.0f ||
+            fixed.WIGGLE_CHANCE < 0.0f || fixed.WIGGLE_CHANCE > 1.0f ||
+            fixed.EXTRA_CONNECTION_CHANCE < 0.0f || fixed.DEADEND_CHANCE > 1.0f) {
+        warnings.append("Warning! All chances should be between 0.0f and 1.0f. Fixed by clamping.\n");
+    }
+    if (fixed.ROOM_BASE_NUMBER >= MAX_ROOMS || fixed.ROOM_BASE_NUMBER < 0) {
+        if (fixed.ROOM_BASE_NUMBER >= MAX_ROOMS) fixed.ROOM_BASE_NUMBER = MAX_ROOMS - 1;
+        if (fixed.ROOM_BASE_NUMBER < 0) fixed.ROOM_BASE_NUMBER = 0;
+        warnings.append("Warning! ROOM_BASE_NUMBER must belong to[0, " + std::to_string(MAX_ROOMS - 1) + "]. Fixed by clamping.\n");
+    }
+    if (fixed.ROOM_SIZE_MIN % 2 == 0 || fixed.ROOM_SIZE_MAX % 2 == 0) {
+        warnings.append("Warning! ROOM_SIZE_MIN and ROOM_SIZE_MAX must be odd. Fixed by subtracting 1.\n");
+    }
+    int min_dimension = std::min(grid_width, grid_height);
+    if (fixed.ROOM_SIZE_MIN > min_dimension || fixed.ROOM_SIZE_MAX > min_dimension) {
+        if (fixed.ROOM_SIZE_MIN > min_dimension) fixed.ROOM_SIZE_MIN = min_dimension;
+        if (fixed.ROOM_SIZE_MAX > min_dimension) fixed.ROOM_SIZE_MAX = min_dimension;
+        warnings.append("Warning! ROOM_SIZE_MIN and ROOM_SIZE_MAX must less than both width and height of the maze. Fixed.\n");
+    }
 
-// Constraints are the points which are always in the maze, never empty
-void build_maze(const PointSet& hall_constraints) {
-    Points unmet_constraints = fix_constraint_points(hall_constraints);
+    if (fixed.ROOM_SIZE_MIN < 0 || fixed.ROOM_SIZE_MAX < 0 || fixed.ROOM_SIZE_MAX < fixed.ROOM_SIZE_MIN) {
+        if (fixed.ROOM_SIZE_MIN < 0) fixed.ROOM_SIZE_MIN = 0;
+        if (fixed.ROOM_SIZE_MAX < 0) fixed.ROOM_SIZE_MAX = 0;
+        if (fixed.ROOM_SIZE_MAX < fixed.ROOM_SIZE_MIN) fixed.ROOM_SIZE_MAX = fixed.ROOM_SIZE_MIN;
+        warnings.append("Warning! ROOM_SIZE_MIN and ROOM_SIZE_MAX must be > 0 and ROOM_SIZE_MAX must be >= ROOM_SIZE_MIN. Fixed.\n");
+    }
+    return fixed;
+}
+
+
+// Places the rooms randomly
+void place_rooms() {
+    std::uniform_int_distribution<> room_size_distribution(cfg.ROOM_SIZE_MIN, cfg.ROOM_SIZE_MAX);
+    int room_avg = cfg.ROOM_SIZE_MIN + (cfg.ROOM_SIZE_MAX - cfg.ROOM_SIZE_MIN) / 2;
+    std::uniform_int_distribution<> room_position_x_distribution(0, grid_width - room_avg);
+    std::uniform_int_distribution<> room_position_y_distribution(0, grid_height - room_avg);
+
+    for (int i = 0; i < cfg.ROOM_BASE_NUMBER; i++) {
+        bool room_is_placed = false;
+        int width = room_size_distribution(rng) / 2 * 2 + 1;
+        int height = room_size_distribution(rng) / 2 * 2 + 1;
+        int room_x = room_position_x_distribution(rng) / 2 * 2 + 1;
+        int room_y = room_position_y_distribution(rng) / 2 * 2 + 1;
+
+        if (room_x + width >= grid_width) width = (grid_width - room_x) / 2 * 2 - 1;
+        if (room_y + height >= grid_height) height = (grid_height - room_y) / 2 * 2 - 1;
+
+        Room room{{room_x, room_y}, {room_x + width - 1, room_y + height - 1}, room_id};
+        bool too_close = false;
+        for (const auto& another_room : rooms) {
+            if (room.too_close(another_room, 1)) {
+                too_close = true;
+                break;
+            }
+        }
+        if (too_close) continue;
+        if (cfg.CONSTRAIN_HALL_ONLY) {
+            bool breaks_hall_constraint = false;
+            for (const Point& point: point_constraints) {
+                if (room.has_point(point)) {
+                    breaks_hall_constraint = true;
+                    break;
+                }  
+            }
+            if (breaks_hall_constraint) continue;
+        }
+        rooms.push_back(room);
+        room_is_placed = true;
+        for (int x = room.min_point.x; x <= room.max_point.x; x++) {
+            for (int y = room.min_point.y; y <= room.max_point.y; y++) {
+                grid[y][x]= room_id;
+            }
+        }
+        room_id++;
+    }
+}
+
+
+// Constraints are the points which are always in the maze, never in the wall
+void build_maze() {
+    Points unmet_constraints(point_constraints.begin(), point_constraints.end());
     // first grow from the constraints
     while (!unmet_constraints.empty()) {
         Point p = unmet_constraints.back();
@@ -306,8 +363,8 @@ void build_maze(const PointSet& hall_constraints) {
         grow_maze(p);
     }
     // then from all the empty points 
-    for (int x = 0; x < grid_cols / 2; x++) {
-        for (int y = 0; y < grid_rows / 2; y++) {
+    for (int x = 0; x < grid_width / 2; x++) {
+        for (int y = 0; y < grid_height / 2; y++) {
             if (grid[y * 2 + 1][x * 2 + 1] == NOTHING_ID) grow_maze({x * 2 + 1, y * 2 + 1});
         }
     }
@@ -316,7 +373,7 @@ void build_maze(const PointSet& hall_constraints) {
 
 // Returns true if point is inside the maze boundaries
 bool is_in_bounds(const Point& p) const {
-    return p.x > 0 && p.y > 0 && p.x < grid_cols - 1 && p.y < grid_rows - 1;
+    return p.x > 0 && p.y > 0 && p.x < grid_width - 1 && p.y < grid_height - 1;
 }
 
 
@@ -439,14 +496,14 @@ bool is_dead_end(const Point& p) {
 
 
 // Removes blind parts of the maze with (1.0 - DEADEND_CHANCE) probability
-void reduce_maze(const PointSet& hall_constraints) {
+void reduce_maze() {
     bool done = false;
     std::uniform_real_distribution<double> reduce_distribution(0.0, 1.0);
     for (auto& end_p : dead_ends) {
         if (reduce_distribution(rng) < cfg.DEADEND_CHANCE) continue;
         Point p{end_p};
         while (is_dead_end(p)) {
-            if (hall_constraints.find(p) != hall_constraints.end()) break; // do not remove constrained points
+            if (point_constraints.find(p) != point_constraints.end()) break; // do not remove constrained points
             for (const auto& d : CARDINALS) {
                 Point test_point = p.neighbour_to(d);
                 if (get_region_id(test_point) != NOTHING_ID) {
