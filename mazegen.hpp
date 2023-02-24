@@ -177,6 +177,14 @@ const std::vector<Door> get_doors() const noexcept {
     return doors;
 }
 
+const Config& get_config() const noexcept{
+    return cfg;
+}
+
+const PointSet& get_constraints() const noexcept{
+    return point_constraints;
+}
+
 
 private:
 
