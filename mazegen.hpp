@@ -290,6 +290,8 @@ Config fix_config(const Config& user_config) {
         warnings.append("Warning! ROOM_BASE_NUMBER must belong to[0, " + std::to_string(MAX_ROOMS - 1) + "]. Fixed by clamping.\n");
     }
     if (fixed.ROOM_SIZE_MIN % 2 == 0 || fixed.ROOM_SIZE_MAX % 2 == 0) {
+        if (fixed.ROOM_SIZE_MIN % 2 == 0) fixed.ROOM_SIZE_MIN -= 1; 
+        if (fixed.ROOM_SIZE_MAX % 2 == 0) fixed.ROOM_SIZE_MAX -= 1; 
         warnings.append("Warning! ROOM_SIZE_MIN and ROOM_SIZE_MAX must be odd. Fixed by subtracting 1.\n");
     }
     int min_dimension = std::min(grid_width, grid_height);
