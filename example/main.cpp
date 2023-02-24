@@ -10,11 +10,11 @@ int main()
     cfg.ROOM_BASE_NUMBER = 25;
     cfg.ROOM_SIZE_MIN = 5;
     cfg.ROOM_SIZE_MAX = 7;
- 
     cfg.EXTRA_CONNECTION_CHANCE = 0.0;
     cfg.WIGGLE_CHANCE = 0.5;
     cfg.DEADEND_CHANCE = 0.5;
     cfg.RECONNECT_DEADENDS_CHANCE = 0.5;
+    cfg.CONSTRAIN_HALL_ONLY = true;
     
     mazegen::PointSet constraints {{1, 1}, {WIDTH - 2, HEIGHT - 2}};
 

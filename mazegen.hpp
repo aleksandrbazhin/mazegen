@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <stack>
-#include <array>
 #include <set>
 #include <map>
 #include <unordered_map>
@@ -59,7 +58,7 @@ struct Direction {
 typedef std::array<Direction, 4> Directions;
 const Directions CARDINALS  {{ {0, -1}, {1, 0}, {0, 1}, {-1, 0} }};
 
-// Represents point on a grid
+// Represents a point on a grid
 struct Point {
     int x;
     int y;
@@ -168,26 +167,21 @@ int get_region_id(const Point& p) const noexcept {
     return grid[p.y][p.x];
 }
 
-const std::vector<Room> get_rooms() const noexcept {
+const std::vector<Room>& get_rooms() const noexcept {
     return rooms;
 }
 
-const std::vector<Hall> get_halls() const noexcept {
+const std::vector<Hall>& get_halls() const noexcept {
     return halls;
 }
 
-const std::vector<Door> get_doors() const noexcept {
+const std::vector<Door>& get_doors() const noexcept {
     return doors;
 }
 
 const Config& get_config() const noexcept{
     return cfg;
 }
-
-const PointSet& get_constraints() const noexcept{
-    return point_constraints;
-}
-
 
 private:
 
