@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <stack>
+#include <array>
 #include <set>
 #include <map>
 #include <unordered_map>
@@ -62,6 +63,8 @@ const Directions CARDINALS  {{ {0, -1}, {1, 0}, {0, 1}, {-1, 0} }};
 struct Point {
     int x;
     int y;
+    Point(int _x, int _y): x(_x), y(_y) {}
+    Point(std::array<int, 2> a): x(a.at(0)), y(a.at(1)) {}
     bool operator<(const Point& another) const {
         return x < another.x || y < another.y;
     }
