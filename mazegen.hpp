@@ -77,6 +77,7 @@ struct Point {
 typedef std::vector<Point> Points;
 typedef std::set<Point> PointSet;
 
+
 // Represents a room with dimensions and id
 struct Room {
     Point min_point;
@@ -95,11 +96,13 @@ struct Room {
     }
 };
 
+
 // Represents a hall region
 struct Hall {
     Point start; // a point belonging to this hall
     int id;
 };
+
 
 // Represents a door connecting a room to a hall region
 struct Door {
@@ -125,6 +128,9 @@ inline bool is_door(int id) {
     return id >= DOOR_ID_START;
 }
 
+namespace {
+
+}
 
 // Class to generate the maze
 class Generator {
@@ -133,7 +139,7 @@ public:
 // Generates a maze
 // Constraints are Points between (1, 1) and (rows - 2, cols - 2),
 // those points are fixed on the generation - they are never a wall 
-Grid generate(int width, int height, const Config& user_config, const PointSet& hall_constraints = {}) noexcept {
+void generate(int width, int height, const Config& user_config, const PointSet& hall_constraints = {}) noexcept {
     clear();
     init_generation(width, height, user_config, hall_constraints);
     place_rooms();
@@ -142,7 +148,6 @@ Grid generate(int width, int height, const Config& user_config, const PointSet& 
     reduce_connectivity();
     reduce_maze();
     reconnect_dead_ends();
-    return grid;
 }
 
 
@@ -157,31 +162,54 @@ void set_seed(unsigned int seed) noexcept {
     random_seed = seed;
 }
 
+
 const unsigned int get_seed() const noexcept {
     return random_seed;
 }
 
+
 // returns region id of a point or NOTHING_ID if point is out of bounds or not in any maze region, i.e. is wall
-int get_region_id(const Point& p) const noexcept {
-    if (!is_in_bounds(p)) return NOTHING_ID;
-    return grid[p.y][p.x];
+int region_at(int x, int y) const noexcept {
+    if (!is_in_bounds(x, y)) return NOTHING_ID;
+    return grid[y][x];
 }
+
+
+// returns region id of a point or NOTHING_ID if point is out of bounds or not in any maze region, i.e. is wall
+int region_at(const Point& p) const noexcept {
+    return region_at(p.x, p.y);
+}
+
 
 const std::vector<Room>& get_rooms() const noexcept {
     return rooms;
 }
 
+
 const std::vector<Hall>& get_halls() const noexcept {
     return halls;
 }
+
 
 const std::vector<Door>& get_doors() const noexcept {
     return doors;
 }
 
+
 const Config& get_config() const noexcept{
     return cfg;
 }
+
+
+int maze_height() const noexcept{
+    return grid.size();
+}
+
+
+int maze_width() const noexcept{
+    return grid.empty() ? 0 : grid.front().size();
+}
+
 
 private:
 
@@ -195,8 +223,6 @@ std::string warnings;
 Points dead_ends;
 PointSet point_constraints;
 
-int grid_width;
-int grid_height;
 Grid grid;
 
 std::mt19937 rng;
@@ -224,8 +250,8 @@ void clear() {
 // Initializes generation internal variables
 void init_generation(int width, int height, const Config& user_config, const PointSet& hall_constraints = {}) {
     auto fixed_size = fix_boundaries(width, height);
-    grid_width = fixed_size.first;
-    grid_height = fixed_size.second;
+    int grid_width = fixed_size.first;
+    int grid_height = fixed_size.second;
     grid = Grid(grid_height, std::vector<int>(grid_width, NOTHING_ID));
     cfg = fix_config(user_config);
     point_constraints = fix_constraint_points(hall_constraints);
@@ -238,14 +264,18 @@ void init_generation(int width, int height, const Config& user_config, const Poi
     }
 }
 
+
 std::pair<int, int> fix_boundaries(int width, int height) {
     if (width % 2 == 0 || height % 2 == 0) {
-        warnings.append("Warning! Boundaries (" 
-            + std::to_string(width) + ", " + std::to_string(height) 
-            + ") must be odd! Fixed by subtracting 1.\n"
+        warnings.append("Warning! Maze height and width must be odd! Fixed by subtracting 1.\n"
         );
         if (width % 2 == 0) width -= 1;
         if (height % 2 == 0) height -= 1;
+    }
+    if (width < 3 || height < 3) {
+        warnings.append("Warning! Maze height and width must be >= 3! Fixed by increasing to 3.\n");
+        if (width < 3) width = 3;
+        if (height < 3 ) height = 3;
     }
     return std::make_pair(width, height);    
 }
@@ -254,7 +284,6 @@ std::pair<int, int> fix_boundaries(int width, int height) {
 // Adds only those constraints that have odd x and y and are not out of grid bounds
 PointSet fix_constraint_points(const PointSet& hall_constraints) {
     PointSet constraints;
-    // constraints.reserve(hall_constraints.size());
     for (auto& constraint: hall_constraints) {
         if (!is_in_bounds(constraint)) {
             warnings.append("Warning! Constraint (" 
@@ -272,6 +301,7 @@ PointSet fix_constraint_points(const PointSet& hall_constraints) {
     }
     return constraints;
 }
+
 
 Config fix_config(const Config& user_config) {
     Config fixed{user_config};
@@ -291,7 +321,7 @@ Config fix_config(const Config& user_config) {
         if (fixed.ROOM_SIZE_MAX % 2 == 0) fixed.ROOM_SIZE_MAX -= 1; 
         warnings.append("Warning! ROOM_SIZE_MIN and ROOM_SIZE_MAX must be odd. Fixed by subtracting 1.\n");
     }
-    int min_dimension = std::min(grid_width, grid_height);
+    int min_dimension = std::min(maze_width(), maze_height());
     if (fixed.ROOM_SIZE_MIN > min_dimension || fixed.ROOM_SIZE_MAX > min_dimension) {
         if (fixed.ROOM_SIZE_MIN > min_dimension) fixed.ROOM_SIZE_MIN = min_dimension;
         if (fixed.ROOM_SIZE_MAX > min_dimension) fixed.ROOM_SIZE_MAX = min_dimension;
@@ -312,8 +342,8 @@ Config fix_config(const Config& user_config) {
 void place_rooms() {
     std::uniform_int_distribution<> room_size_distribution(cfg.ROOM_SIZE_MIN, cfg.ROOM_SIZE_MAX);
     int room_avg = cfg.ROOM_SIZE_MIN + (cfg.ROOM_SIZE_MAX - cfg.ROOM_SIZE_MIN) / 2;
-    std::uniform_int_distribution<> room_position_x_distribution(0, grid_width - room_avg);
-    std::uniform_int_distribution<> room_position_y_distribution(0, grid_height - room_avg);
+    std::uniform_int_distribution<> room_position_x_distribution(0, maze_width() - room_avg);
+    std::uniform_int_distribution<> room_position_y_distribution(0, maze_height() - room_avg);
 
     for (int i = 0; i < cfg.ROOM_BASE_NUMBER; i++) {
         bool room_is_placed = false;
@@ -322,8 +352,11 @@ void place_rooms() {
         int room_x = room_position_x_distribution(rng) / 2 * 2 + 1;
         int room_y = room_position_y_distribution(rng) / 2 * 2 + 1;
 
-        if (room_x + width >= grid_width) width = (grid_width - room_x) / 2 * 2 - 1;
-        if (room_y + height >= grid_height) height = (grid_height - room_y) / 2 * 2 - 1;
+        int x_overshoot = maze_width() - room_x;
+        int y_overshoot = maze_height() - room_y;
+
+        if (width >= x_overshoot) width = x_overshoot / 2 * 2 - 1;
+        if (height >= y_overshoot) height = y_overshoot / 2 * 2 - 1;
 
         Room room{{room_x, room_y}, {room_x + width - 1, room_y + height - 1}, room_id};
         bool too_close = false;
@@ -362,31 +395,44 @@ void build_maze() {
     // first grow from the constraints
     while (!unmet_constraints.empty()) {
         Point p = unmet_constraints.back();
-        auto [x, y] = p;
         unmet_constraints.pop_back();
-        if (grid[y][x] != NOTHING_ID) {
+        if (grid[p.y][p.x] != NOTHING_ID) {
             continue;
         }
         grow_maze(p);
     }
     // then from all the empty points 
-    for (int x = 0; x < grid_width / 2; x++) {
-        for (int y = 0; y < grid_height / 2; y++) {
-            if (grid[y * 2 + 1][x * 2 + 1] == NOTHING_ID) grow_maze({x * 2 + 1, y * 2 + 1});
+    for (int x = 0; x < maze_width() / 2; x++) {
+        for (int y = 0; y < maze_height() / 2; y++) {
+            // if (grid[y * 2 + 1][x * 2 + 1] == NOTHING_ID) grow_maze({x * 2 + 1, y * 2 + 1});
+            if (region_at(x, y) == NOTHING_ID) grow_maze({x * 2 + 1, y * 2 + 1});
         }
     }
 }
 
 
+
+// Returns true if point is inside the maze boundaries
+bool is_in_bounds(int x, int y) const {
+    return x > 0 && y > 0 && x < maze_width() - 1 && y < maze_height() - 1;
+}
+
+
 // Returns true if point is inside the maze boundaries
 bool is_in_bounds(const Point& p) const {
-    return p.x > 0 && p.y > 0 && p.x < grid_width - 1 && p.y < grid_height - 1;
+    return is_in_bounds(p.x, p.y);
+}
+
+
+// Returns true if point does not have halls or rooms or doors
+bool is_cell_empty(int x, int y) const {
+    return is_in_bounds(x, y) && grid[y][x] == NOTHING_ID;
 }
 
 
 // Returns true if point does not have halls or rooms or doors
 bool is_cell_empty(const Point& p) const {
-    return is_in_bounds(p) && grid[p.y][p.x] == NOTHING_ID;
+    return is_cell_empty(p.x, p.y);
 }
 
 
@@ -451,7 +497,7 @@ void grow_maze(Point start_p) {
 // Adding potential doors
 void add_connector(const Point& test_point, const Point& connect_point, 
         std::unordered_map<int, Points>& connections) {
-    int region_id = get_region_id(test_point);
+    int region_id = region_at(test_point);
     if (region_id != NOTHING_ID) {
         if (connections.find(region_id) == connections.end()) {
             connections[region_id] = Points{};
@@ -494,7 +540,7 @@ bool is_dead_end(const Point& p) {
     int passways = 0;
     for (const auto& d : CARDINALS) {
         Point test_p = p.neighbour_to(d);
-        if (get_region_id(test_p) != NOTHING_ID) {
+        if (region_at(test_p) != NOTHING_ID) {
             passways += 1;
         }
     }
@@ -513,7 +559,7 @@ void reduce_maze() {
             if (point_constraints.find(p) != point_constraints.end()) break; // do not remove constrained points
             for (const auto& d : CARDINALS) {
                 Point test_point = p.neighbour_to(d);
-                if (get_region_id(test_point) != NOTHING_ID) {
+                if (region_at(test_point) != NOTHING_ID) {
                     grid[p.y][p.x] = NOTHING_ID;
                     p = test_point;
                     break;
@@ -573,16 +619,16 @@ void reduce_connectivity() {
 void reconnect_dead_ends() {
     std::uniform_real_distribution<double> reconnect_distribution(0.0, 1.0);
     for (const Point& dead_end: dead_ends) {
-        int hall_id = get_region_id(dead_end);
+        int hall_id = region_at(dead_end);
         if (hall_id == NOTHING_ID) continue;
         std::map<Point, int> candidates;
         int connection_number = 0;
         for (const Direction& dir : CARDINALS) {
             Point test_p = dead_end.neighbour_to(dir * 2);
-            int neighbor_id = get_region_id(test_p);
+            int neighbor_id = region_at(test_p);
             if (neighbor_id != NOTHING_ID) {
                 Point door_p {dead_end.x + dir.dx, dead_end.y + dir.dy};
-                if (get_region_id(door_p) != NOTHING_ID) {
+                if (region_at(door_p) != NOTHING_ID) {
                     ++connection_number;
                     continue;
                 }

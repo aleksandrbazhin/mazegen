@@ -35,18 +35,19 @@ This is an odd number based maze - the height, width, room_min_size, room_max_si
 At minimum you have to create a generator and call generate.
 ```
 auto gen = mazegen::Generator();
-mazegen::Grid grid = gen.generate(width, height);
+gen.generate(width, height);
 ```
-`gen.generate()` returns a `mazegen::Grid` which is a `std::vector<std::vector<int>>`. By accessing `grid[y][x]` you will get a maze region id at that point. Or you can call a `gen.get_region_id(x, y)` instead. If there is a wall, the grid contains `mazegen::NOTHING_ID` (which is -1). To determine if id belongs to the hall, room or door use `mazegen::is_hall(id)`, `mazegen::is_room(id)`, and `mazegen::is_door(id)`. 
+`gen.generate()` runs a generation algorithm storing all results in the std containers.
 
->Ids are reasonably unique (I don't know a way to break them, but they are just simple incremented integers, hall ids are in (0, 1000000), rooms in [1000000, 2000000], doors are > 2000000. Yeah I know it's lazy.)
+To iterate over the resulting maze use `gen.maze_width()` and `gen.get_height()`. By calling `gen.region_at(x, y)` you can get a maze region id at that point. If there is a wall or `x` or `y` is out of maze boundaries, `mazegen::NOTHING_ID` will be returned. To determine if the id belongs to a hall, room or door use `mazegen::is_hall(id)`, `mazegen::is_room(id)`, and `mazegen::is_door(id)`. 
+
 
 ### Setting random seed
 You can set a randomization seed for the generator. Seed is `unsigned int` as used by std `<random>`.
 ```
 auto gen = mazegen::Generator();
 gen.set_seed(1000);
-mazegen::Grid grid = gen.generate(width, height);
+gen.generate(width, height);
 ```
 `gen.get_seed()` returns the seed used for the last generation.
 
@@ -66,7 +67,7 @@ cfg.CONSTRAIN_HALL_ONLY = true;
 mazegen::PointSet constraints {{1, 1}, {width - 2, height - 2}};
 
 auto gen = mazegen::Generator();
-auto grid = gen.generate(width, height, cfg, constraints);
+gen.generate(width, height, cfg, constraints);
 ```
 
 ### Sanitizing values
@@ -81,9 +82,9 @@ auto grid = gen.generate(width, height, cfg, constraints);
 ### Other generation products
 Vectors of hall regions, rooms, and doors are returned by the following methods of `mazegen::Generator`:
 ```
-const std::vector<Room>& get_rooms() const noexcept;
-const std::vector<Hall>& get_halls() const noexcept;
-const std::vector<Door>& get_doors() const noexcept;
+const std::vector<Room>& get_rooms();
+const std::vector<Hall>& get_halls();
+const std::vector<Door>& get_doors();
 ```
 
 

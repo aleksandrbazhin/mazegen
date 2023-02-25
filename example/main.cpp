@@ -19,22 +19,26 @@ int main()
     mazegen::PointSet constraints {{1, 1}, {WIDTH - 2, HEIGHT - 2}};
 
     auto gen = mazegen::Generator();
-    auto grid = gen.generate(WIDTH, HEIGHT, cfg, constraints);
+    gen.generate(WIDTH, HEIGHT, cfg, constraints);
 
     if (!gen.get_warnings().empty()) {
         std::cout << gen.get_warnings() << std::endl;
     }
 
-    for (int y = 0; y < grid.size(); y++) {
-        for (int x = 0; x < grid[0].size(); x++) {
-            if (grid[y][x] == mazegen::NOTHING_ID) {
+    for (int y = 0; y < gen.maze_height(); y++) {
+        for (int x = 0; x < gen.maze_width(); x++) {
+            int region = gen.region_at(x, y);
+            if (region == mazegen::NOTHING_ID) {
                 std::cout << "██";
             } else if (constraints.find(mazegen::Point{x, y}) != constraints.end()) {
+                // print constraints
                 std::cout << "[]";
-            } else if (mazegen::is_door(grid[y][x])){
+            } else if (mazegen::is_door(region)){
+                // print doors
                 std::cout << "▒▒";
             } else {
-                std::cout << std::setw(2) << grid[y][x] % mazegen::MAX_ROOMS;
+                // for rooms and halls we just print last 2 digits of their ids
+                std::cout << std::setw(2) << region % 100;
             }
         }
         std::cout << std::endl;
