@@ -16,11 +16,11 @@ It's recommended to use it to understand the parameters of the generation.
 
 The algorithm:
 1. Throws rooms randomly.
-2. Grows the maze by random walk, wiggling with a `wiggle chance`, from every point. Unlike the original it has usr-defined `constraints` which are first to be used as growth starting points.
-3. Connects rooms to all the adjacent halls by the doors once. Each hall region is connected at least once.
-4. If the room is connected to an already connected region, the door is removed with `1.0f - extra connection chance`.  Unlike the original, there is no flood fill to test for connectivity, instead inion-find is used for maze regions.
+2. Grows the maze by random walk, wiggling with a `wiggle chance`, from every point. Unlike the original it has user-defined `constraints` which are first to be used as growth starting points.
+3. Connects rooms to all of the adjacent hall regions by the doors once.
+4. If the room is connected to an already connected region, the door is removed with `1.0f - extra connection chance`.  Unlike the original, there is no flood fill to test for connectivity, instead union-find is used for maze regions.
 5. Deadends are removed with `1.0f - deadend chance`. If `deadend chance` is 0, the maze just connects all the constraints and the rooms without any blind halls.
-6. Deadends adjacent to the rooms are connected with `reconnect deadends chance`. This step is not in the original, but leads to a more natural looking maze - who would build a hall cloase to the room and not build a door?
+6. Deadends adjacent to the rooms are connected with `reconnect deadends chance`. This step is not in the original, but leads to a more natural looking maze - who would build a hall close to the room and not build a door?
 
 
 ## Library limitations
@@ -89,6 +89,7 @@ const std::vector<Door>& get_doors();
 
 
 ## Roadmap
+- Improve warnings reporting
 - Room constraints (Needed to embed hand-generated rooms).
 - Return crossroad graph.
 - Pathfinding using crossroad graph.
