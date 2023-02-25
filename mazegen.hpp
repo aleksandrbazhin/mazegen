@@ -20,6 +20,26 @@ const int HALL_ID_START = 0;
 const int ROOM_ID_START = MAX_ROOMS;
 const int DOOR_ID_START = MAX_ROOMS * 2;
 
+namespace {
+    typedef std::vector<std::vector<int>> Grid;
+
+    // Used to iterate through neighbors to a point
+    struct Direction {
+        int dx = 0, dy = 0;
+        bool operator==(const Direction& rhs) const {
+            return dx == rhs.dx && dy == rhs.dy;
+        }
+        Direction operator-() const {
+            return Direction{-1 * dx, -1 * dy};
+        }
+        Direction operator*(const int a) const {
+            return Direction{a * dx, a * dy};
+        }
+    };
+    typedef std::array<Direction, 4> Directions;
+    const Directions CARDINALS  {{ {0, -1}, {1, 0}, {0, 1}, {-1, 0} }};
+
+}
 
 struct Config {
     // Probability to not remove deadends
@@ -40,23 +60,6 @@ struct Config {
     bool CONSTRAIN_HALL_ONLY = false;
 };
 
-typedef std::vector<std::vector<int>> Grid;
-
-// Used to iterate through neighbors to a point
-struct Direction {
-    int dx = 0, dy = 0;
-    bool operator==(const Direction& rhs) const {
-        return dx == rhs.dx && dy == rhs.dy;
-    }
-    Direction operator-() const {
-        return Direction{-1 * dx, -1 * dy};
-    }
-    Direction operator*(const int a) const {
-        return Direction{a * dx, a * dy};
-    }
-};
-typedef std::array<Direction, 4> Directions;
-const Directions CARDINALS  {{ {0, -1}, {1, 0}, {0, 1}, {-1, 0} }};
 
 // Represents a point on a grid
 struct Point {
@@ -128,9 +131,6 @@ inline bool is_door(int id) {
     return id >= DOOR_ID_START;
 }
 
-namespace {
-
-}
 
 // Class to generate the maze
 class Generator {
