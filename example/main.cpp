@@ -1,5 +1,5 @@
 #include <iomanip>
-#include "../mazegen.hpp"
+#include <mazegen.hpp>
 
 int main()
 {

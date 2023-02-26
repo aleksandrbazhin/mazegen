@@ -4,7 +4,7 @@ Mazegen is a maze generation library based on Bob Nystrom's approach, decribed h
 
 It has zero dependecies, but uses stl heavily, so it is supposed to be used in C++ applications.
 
-The `example/` directory includes an ASCII-graphics example application.
+The `example/` directory includes an ASCII-graphics example application. To build it set `-DBUILD_EXAMPLE=ON` when running cmake.
 
 ![ASCII example](docs/Screenshot1.png)
 
