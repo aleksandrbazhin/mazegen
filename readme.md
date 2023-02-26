@@ -33,7 +33,7 @@ This is an odd number based maze - the height, width, room_min_size, room_max_si
 
 ### Basic usage
 At minimum you have to create a generator and call generate.
-```
+```cpp
 auto gen = mazegen::Generator();
 gen.generate(width, height);
 ```
@@ -44,7 +44,7 @@ To iterate over the resulting maze use `gen.maze_width()` and `gen.get_height()`
 
 ### Setting random seed
 You can set a randomization seed for the generator. Seed is `unsigned int` as used by std `<random>`.
-```
+```cpp
 auto gen = mazegen::Generator();
 gen.set_seed(1000);
 gen.generate(width, height);
@@ -53,7 +53,7 @@ gen.generate(width, height);
 
 ### Setting generation parameters
 Most likely you would want to setup generation parameters, it is done by providing `mazegen::Config` to the `generate` method. The 4th parameter is constrained points of type `mazegen::PointSet`. Those points are always in a room or a hall. If the can be in a room is determined by `constrain halls only` boolean value.
-```
+```cpp
 mazegen::Config cfg;
 cfg.ROOM_BASE_NUMBER = 25;
 cfg.ROOM_SIZE_MIN = 5;
@@ -81,7 +81,7 @@ gen.generate(width, height, cfg, constraints);
 
 ### Other generation products
 Vectors of hall regions, rooms, and doors are returned by the following methods of `mazegen::Generator`:
-```
+```cpp
 const std::vector<Room>& get_rooms();
 const std::vector<Hall>& get_halls();
 const std::vector<Door>& get_doors();
