@@ -6,11 +6,12 @@ It has zero dependecies, but uses stl heavily, so it is supposed to be used in C
 
 The `example/` directory includes an ASCII-graphics example application. To build it set `-DBUILD_EXAMPLE=ON` when running cmake.
 
-![ASCII example](docs/Screenshot1.png)
-
 More complex demo project with SFML and ImGui can be found here https://github.com/aleksandrbazhin/mazegen_sfml_example
 It's recommended to use it to understand the parameters of the generation.
-![Demo application](docs/Screenshot2.png)
+
+![ASCII example](docs/Screenshot1.png)
+
+![Demo SFML application](docs/Screenshot2.png)
 
 ## Algorithm step-by-step
 
