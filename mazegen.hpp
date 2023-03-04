@@ -42,7 +42,7 @@ struct Config {
 
 
 
-// These 9 functions have to be reimplemented for generator to be able to create custom grid types
+// These 8 functions have to be reimplemented for generator to be able to create custom grid types
 
 // constructs and returns the grid
 template<typename TGrid>
@@ -75,12 +75,6 @@ inline bool is_in_bounds(const TGrid& grid, int x, int y) {
 template<typename TGrid>
 inline bool is_wall(const TGrid& grid, int x, int y) {
     return is_in_bounds(grid, x, y) && grid[y][x] == NOTHING_ID;
-}
-
-// Returns true if (x, y) is wall or is outside of the grid
-template<typename TGrid>
-inline bool is_empty(const TGrid& grid, int x, int y) {
-    return !is_in_bounds(grid, x, y) || grid[y][x] == NOTHING_ID;
 }
 
 // returns region id at (x, y) or NOTHING_ID if (x, y) is out of bounds or is a wall
@@ -195,7 +189,7 @@ bool is_wall(const TGrid& grid, const Position& p) {
 }
 template<typename TGrid>
 bool is_empty(const TGrid& grid, const Position& p) {
-    return mazegen::is_empty(grid, p.x, p.y);
+    return !is_in_bounds(grid, p) || is_wall(grid, p);
 }
 // returns region id of a Position or NOTHING_ID if Position is out of bounds or not in any maze region, i.e. is wall
 template<typename TGrid>
@@ -383,7 +377,7 @@ void clear() {
 // Initializes generation internal variables
 void init_generation(int width, int height, const Config& user_config, const PositionSet& hall_constraints = {}) {
     auto [grid_width, grid_height] = fix_boundaries(width, height);
-    grid = init_grid<Grid>(grid_width, grid_height);
+    grid = init_grid<TGrid>(grid_width, grid_height);
     cfg = fix_config(grid, user_config);
     Position_constraints = fix_constraint_Positions(grid, hall_constraints);
     if (is_seed_set) {

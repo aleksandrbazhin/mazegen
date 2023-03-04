@@ -1,6 +1,50 @@
 #include <iomanip>
 #include <mazegen.hpp>
 
+class MyGrid {
+
+};
+
+
+namespace mazegen{
+
+template<>
+MyGrid init_grid(int width, int height) {
+    return MyGrid();
+}
+
+template<>
+void clear_grid(MyGrid& grid) {
+    
+}
+
+template<>
+int maze_width(const MyGrid& grid) {
+    return 0;
+}
+
+template<>
+int maze_height(const MyGrid& grid) {
+    return 0;
+}
+
+template<>
+bool is_wall(const MyGrid& grid, int x, int y) {
+    return false;
+}
+
+template<>
+int get_region(const MyGrid& grid, int x, int y) {
+    return mazegen::NOTHING_ID;
+}
+
+template<>
+bool set_region(MyGrid& grid, int x, int y, int id) {
+    return true;
+}
+}
+
+
 int main()
 {
     const int HEIGHT = 27;
@@ -11,7 +55,8 @@ int main()
     cfg.ROOM_SIZE_MAX = 9;
 
     mazegen::PositionSet constraints {{1, 1}, {WIDTH - 2, HEIGHT - 2}};
-    auto gen = mazegen::Generator();
+    auto gen = mazegen::Generator<MyGrid>();
+    // auto gen = mazegen::Generator();
     // gen.set_seed(0);
     auto grid = gen.generate(WIDTH, HEIGHT, cfg, constraints);
 
